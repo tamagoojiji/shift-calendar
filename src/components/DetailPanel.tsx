@@ -3,8 +3,7 @@ import type { DayData, DetailItem } from '../types';
 import { SHIFT_COLORS, SHIFT_LABELS } from '../types';
 import { saveDay, getDay } from '../utils/storage';
 import { WEEKDAY_LABELS } from '../utils/dateUtils';
-
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbydY4zyz4hYMGhTfGojPqsWcNaK2Jy9A-_4xAWAmG77_bP_XeSZvQ7Hsr6OsRNXiPpOeA/exec';
+import { analyzeEventImage } from '../utils/gemini';
 
 interface Props {
   dateStr: string;
@@ -55,24 +54,14 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
     setImportError(null);
 
     try {
-      const base64 = await fileToBase64(file);
-
-      const response = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ image: base64, mimeType: file.type, action: 'event' }),
-      });
-
-      const text = await response.text();
-
-      if (text.startsWith('<!DOCTYPE') || text.startsWith('<html')) {
-        throw new Error('読み取りに失敗しました。再度お試しください。');
+      const apiKey = localStorage.getItem('shift_gemini_key') || '';
+      if (!apiKey) {
+        throw new Error('設定タブでGemini APIキーを設定してください');
       }
 
-      const data = JSON.parse(text);
-      if (data.error) throw new Error(data.error);
+      const base64 = await fileToBase64(file);
+      const data = await analyzeEventImage(apiKey, base64, file.type);
 
-      // 抽出されたイベントを登録
       const events: { date: string; time: string; content: string }[] = data.events || [];
       let addedCount = 0;
 

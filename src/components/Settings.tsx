@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { SHIFT_COLORS } from '../types';
 
 export default function Settings() {
-  const [gasUrl, setGasUrl] = useState(() => localStorage.getItem('shift_gas_url') || '');
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('shift_gemini_key') || '');
   const [saved, setSaved] = useState(false);
 
-  const handleSaveGasUrl = () => {
-    localStorage.setItem('shift_gas_url', gasUrl);
+  const handleSave = () => {
+    localStorage.setItem('shift_gemini_key', apiKey.trim());
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -23,23 +23,23 @@ export default function Settings() {
     <div className="settings">
       <h2 className="settings-title">設定</h2>
 
-      {/* GAS URL */}
+      {/* Gemini APIキー */}
       <div className="settings-section">
-        <h3>シフト読込API（GAS URL）</h3>
-        <p className="settings-desc">Gemini APIで画像を読み取るためのGAS Web App URLを設定します。</p>
+        <h3>Gemini APIキー</h3>
+        <p className="settings-desc">画像読み取り（シフト・イベント）に使用します。</p>
         <input
-          type="text"
+          type="password"
           className="settings-input"
-          placeholder="https://script.google.com/macros/s/..."
-          value={gasUrl}
-          onChange={e => setGasUrl(e.target.value)}
+          placeholder="AIzaSy..."
+          value={apiKey}
+          onChange={e => setApiKey(e.target.value)}
         />
-        <div style={{ fontSize: '10px', color: '#999', wordBreak: 'break-all', marginTop: '4px' }}>
-          保存済み: {localStorage.getItem('shift_gas_url') || '未設定'}
-        </div>
-        <button className="settings-save-btn" onClick={handleSaveGasUrl}>
+        <button className="settings-save-btn" onClick={handleSave}>
           {saved ? '保存しました' : '保存'}
         </button>
+        {localStorage.getItem('shift_gemini_key') && (
+          <div style={{ fontSize: '11px', color: '#4CAF50', marginTop: '4px' }}>設定済み</div>
+        )}
       </div>
 
       {/* 色凡例 */}

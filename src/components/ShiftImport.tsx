@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import type { NightShiftPlace, NightShiftTime } from '../types';
 import { saveDay, getDay } from '../utils/storage';
 import { getDaysInMonth, formatDate, getToday, WEEKDAY_LABELS } from '../utils/dateUtils';
+import { analyzeShiftImage, analyzeEventImage } from '../utils/gemini';
 
 // === 夜勤関連の型 ===
 interface ParsedShift {
@@ -215,12 +216,17 @@ function NightShiftImport() {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [editShifts, setEditShifts] = useState<ParsedShift[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const gasUrl = 'https://script.google.com/macros/s/AKfycbydY4zyz4hYMGhTfGojPqsWcNaK2Jy9A-_4xAWAmG77_bP_XeSZvQ7Hsr6OsRNXiPpOeA/exec';
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const apiKey = localStorage.getItem('shift_gemini_key') || '';
+    if (!apiKey) {
+      setError('設定タブでGemini APIキーを設定してください');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -228,21 +234,7 @@ function NightShiftImport() {
 
     try {
       const base64 = await fileToBase64(file);
-
-      const response = await fetch(gasUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ image: base64, mimeType: 'image/jpeg' }),
-      });
-
-      const text = await response.text();
-
-      if (text.startsWith('<!DOCTYPE') || text.startsWith('<html')) {
-        throw new Error('GASエラー。再度お試しください。');
-      }
-
-      const data = JSON.parse(text);
-      if (data.error) throw new Error(data.error);
+      const data = await analyzeShiftImage(apiKey, base64, file.type);
 
       setResult(data);
       setEditShifts(data.shifts.map((s: ParsedShift) => ({ ...s })));
@@ -386,12 +378,17 @@ function EventImport() {
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const gasUrl = 'https://script.google.com/macros/s/AKfycbydY4zyz4hYMGhTfGojPqsWcNaK2Jy9A-_4xAWAmG77_bP_XeSZvQ7Hsr6OsRNXiPpOeA/exec';
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const apiKey = localStorage.getItem('shift_gemini_key') || '';
+    if (!apiKey) {
+      setError('設定タブでGemini APIキーを設定してください');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -399,21 +396,7 @@ function EventImport() {
 
     try {
       const base64 = await fileToBase64(file);
-
-      const response = await fetch(gasUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ image: base64, mimeType: 'image/jpeg', action: 'event' }),
-      });
-
-      const text = await response.text();
-
-      if (text.startsWith('<!DOCTYPE') || text.startsWith('<html')) {
-        throw new Error('読み取りに失敗しました。再度お試しください。');
-      }
-
-      const data = JSON.parse(text);
-      if (data.error) throw new Error(data.error);
+      const data = await analyzeEventImage(apiKey, base64, file.type);
 
       if (data.events && data.events.length > 0) {
         setEvents(data.events);
