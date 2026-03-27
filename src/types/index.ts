@@ -27,7 +27,7 @@ export interface Staff {
 }
 
 // 眼科スタッフのシフトパターン
-export type ClinicShiftPattern = 'am' | 'pm' | 'am_pm' | 'late' | 'off' | null; // 午前/午後/午前+午後/11:30〜/休み
+export type ClinicShiftPattern = 'am' | 'pm' | 'am_pm' | 'late' | 'ten' | 'off' | null; // 午前/午後/午前+午後/11:30〜/10時〜/休み
 
 // 眼科カレンダーの1日データ
 export interface ClinicDayData {
