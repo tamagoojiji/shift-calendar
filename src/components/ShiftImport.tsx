@@ -39,11 +39,11 @@ export default function ShiftImport() {
       // 画像をBase64に変換
       const base64 = await fileToBase64(file);
 
-      // GAS経由でGemini APIに送信（text/plainでCORSプリフライト回避）
+      // GAS経由でGemini APIに送信（text/plainでCORS対策）
       const response = await fetch(gasUrl, {
         method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ image: base64, mimeType: file.type }),
-        redirect: 'follow',
       });
 
       const text = await response.text();
