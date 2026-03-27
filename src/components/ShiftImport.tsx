@@ -27,7 +27,7 @@ interface DayShiftRow {
 }
 
 export default function ShiftImport() {
-  const [mode, setMode] = useState<'day' | 'night'>('day');
+  const [mode, setMode] = useState<'day' | 'night' | 'event'>('day');
 
   return (
     <div className="shift-import">
@@ -45,9 +45,17 @@ export default function ShiftImport() {
         >
           夜勤読込
         </button>
+        <button
+          className={`import-mode-tab ${mode === 'event' ? 'active' : ''}`}
+          onClick={() => setMode('event')}
+        >
+          イベント
+        </button>
       </div>
 
-      {mode === 'day' ? <DayShiftInput /> : <NightShiftImport />}
+      {mode === 'day' && <DayShiftInput />}
+      {mode === 'night' && <NightShiftImport />}
+      {mode === 'event' && <EventImport />}
     </div>
   );
 }
@@ -358,6 +366,175 @@ function NightShiftImport() {
           <div className="import-actions">
             <button className="import-apply-btn" onClick={applyShifts}>カレンダーに反映</button>
             <button className="import-cancel-btn" onClick={() => { setResult(null); setEditShifts([]); }}>キャンセル</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ========================================
+// イベント読込コンポーネント
+// ========================================
+interface EventItem {
+  date: string;
+  time: string;
+  content: string;
+}
+
+function EventImport() {
+  const [loading, setLoading] = useState(false);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const gasUrl = 'https://script.google.com/macros/s/AKfycbyoz4fFLLQx0Ot2aM_94ut8eT9OU9a5eEN6urWNMR-LXlBLGefznSwSRIqq4N8Ityo7Fw/exec';
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    setError(null);
+    setEvents([]);
+
+    try {
+      const base64 = await fileToBase64(file);
+
+      const response = await fetch(gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ image: base64, mimeType: file.type, action: 'event' }),
+      });
+
+      const text = await response.text();
+
+      if (text.startsWith('<!DOCTYPE') || text.startsWith('<html')) {
+        throw new Error('読み取りに失敗しました。再度お試しください。');
+      }
+
+      const data = JSON.parse(text);
+      if (data.error) throw new Error(data.error);
+
+      if (data.events && data.events.length > 0) {
+        setEvents(data.events);
+      } else {
+        setError('イベント情報を読み取れませんでした');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '読み取りに失敗しました');
+    } finally {
+      setLoading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const updateEvent = (index: number, field: keyof EventItem, value: string) => {
+    setEvents(prev => prev.map((ev, i) => i === index ? { ...ev, [field]: value } : ev));
+  };
+
+  const removeEvent = (index: number) => {
+    setEvents(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const applyEvents = () => {
+    let count = 0;
+    events.forEach(evt => {
+      if (!evt.date || !evt.content) return;
+      const day = getDay(evt.date);
+      day.details = [...(day.details || []), {
+        id: Date.now().toString() + '_' + count,
+        time: evt.time,
+        content: evt.content,
+      }];
+      saveDay(day);
+      count++;
+    });
+
+    alert(`${count}件のイベントを登録しました`);
+    setEvents([]);
+  };
+
+  return (
+    <div>
+      <div className="import-section">
+        <p className="import-desc">イベントのチラシやスクショをアップロード。日付・時間・内容を自動で読み取りカレンダーに登録します。</p>
+
+        <div className="import-upload-area" onClick={() => fileRef.current?.click()}>
+          <div className="import-upload-icon">📷</div>
+          <div>タップして画像を選択</div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            hidden
+          />
+        </div>
+      </div>
+
+      {loading && (
+        <div className="import-loading">
+          <div className="spinner" />
+          <p>読み取り中...</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="import-error">{error}</div>
+      )}
+
+      {events.length > 0 && (
+        <div className="import-result">
+          <h3>読み取り結果</h3>
+          <div className="import-preview">
+            <table className="import-table">
+              <thead>
+                <tr>
+                  <th>日付</th>
+                  <th>時間</th>
+                  <th>内容</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.map((evt, i) => (
+                  <tr key={i}>
+                    <td>
+                      <input
+                        type="date"
+                        value={evt.date}
+                        onChange={e => updateEvent(i, 'date', e.target.value)}
+                        className="import-select"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="time"
+                        value={evt.time}
+                        onChange={e => updateEvent(i, 'time', e.target.value)}
+                        className="import-select"
+                        style={{ width: '80px' }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        value={evt.content}
+                        onChange={e => updateEvent(i, 'content', e.target.value)}
+                        className="import-select"
+                      />
+                    </td>
+                    <td>
+                      <button className="import-remove-btn" onClick={() => removeEvent(i)}>×</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="import-actions">
+            <button className="import-apply-btn" onClick={applyEvents}>カレンダーに反映</button>
+            <button className="import-cancel-btn" onClick={() => setEvents([])}>キャンセル</button>
           </div>
         </div>
       )}
