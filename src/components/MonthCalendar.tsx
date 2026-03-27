@@ -131,7 +131,7 @@ export default function MonthCalendar() {
             <div className="cal-shift" style={{ color: day.dayShift ? SHIFT_COLORS[day.dayShift] : 'transparent' }}>
               {day.dayShift ? SHIFT_LABELS[day.dayShift] : '\u00A0'}
             </div>
-            {day.nightShift ? (
+            {day.nightShift && (
               <>
                 <div className="cal-shift cal-night-time" style={{ color: SHIFT_COLORS[day.nightShift] }}>
                   {day.nightTime === '17' ? '17時' : '20時'}
@@ -139,11 +139,6 @@ export default function MonthCalendar() {
                 <div className="cal-shift" style={{ color: SHIFT_COLORS[day.nightShift] }}>
                   {SHIFT_LABELS[day.nightShift]}
                 </div>
-              </>
-            ) : (
-              <>
-                <div className="cal-shift">&nbsp;</div>
-                <div className="cal-shift">&nbsp;</div>
               </>
             )}
           </>

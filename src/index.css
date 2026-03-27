@@ -142,10 +142,10 @@ body {
 }
 
 .cal-cell {
-  min-height: 72px;
+  min-height: 52px;
   border-right: 1px solid #eee;
   border-bottom: 1px solid #eee;
-  padding: 2px;
+  padding: 1px 2px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   position: relative;
