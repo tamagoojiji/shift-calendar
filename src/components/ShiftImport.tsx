@@ -232,7 +232,7 @@ function NightShiftImport() {
       const response = await fetch(gasUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ image: base64, mimeType: file.type }),
+        body: JSON.stringify({ image: base64, mimeType: 'image/jpeg' }),
       });
 
       const text = await response.text();
@@ -403,7 +403,7 @@ function EventImport() {
       const response = await fetch(gasUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ image: base64, mimeType: file.type, action: 'event' }),
+        body: JSON.stringify({ image: base64, mimeType: 'image/jpeg', action: 'event' }),
       });
 
       const text = await response.text();
@@ -544,11 +544,35 @@ function EventImport() {
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(',')[1]);
+    const img = new Image();
+    img.onload = () => {
+      const maxSize = 1600;
+      let w = img.width;
+      let h = img.height;
+
+      if (w > maxSize || h > maxSize) {
+        if (w > h) {
+          h = Math.round(h * maxSize / w);
+          w = maxSize;
+        } else {
+          w = Math.round(w * maxSize / h);
+          h = maxSize;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      resolve(dataUrl.split(',')[1]);
     };
+    img.onerror = reject;
+
+    const reader = new FileReader();
+    reader.onload = () => { img.src = reader.result as string; };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
