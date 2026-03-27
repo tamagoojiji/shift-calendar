@@ -4,7 +4,7 @@ import { SHIFT_COLORS, SHIFT_LABELS } from '../types';
 import { saveDay, getDay } from '../utils/storage';
 import { WEEKDAY_LABELS } from '../utils/dateUtils';
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyoz4fFLLQx0Ot2aM_94ut8eT9OU9a5eEN6urWNMR-LXlBLGefznSwSRIqq4N8Ityo7Fw/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbydY4zyz4hYMGhTfGojPqsWcNaK2Jy9A-_4xAWAmG77_bP_XeSZvQ7Hsr6OsRNXiPpOeA/exec';
 
 interface Props {
   dateStr: string;

@@ -215,7 +215,7 @@ function NightShiftImport() {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [editShifts, setEditShifts] = useState<ParsedShift[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const gasUrl = 'https://script.google.com/macros/s/AKfycbyoz4fFLLQx0Ot2aM_94ut8eT9OU9a5eEN6urWNMR-LXlBLGefznSwSRIqq4N8Ityo7Fw/exec';
+  const gasUrl = 'https://script.google.com/macros/s/AKfycbydY4zyz4hYMGhTfGojPqsWcNaK2Jy9A-_4xAWAmG77_bP_XeSZvQ7Hsr6OsRNXiPpOeA/exec';
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -386,7 +386,7 @@ function EventImport() {
   const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const gasUrl = 'https://script.google.com/macros/s/AKfycbyoz4fFLLQx0Ot2aM_94ut8eT9OU9a5eEN6urWNMR-LXlBLGefznSwSRIqq4N8Ityo7Fw/exec';
+  const gasUrl = 'https://script.google.com/macros/s/AKfycbydY4zyz4hYMGhTfGojPqsWcNaK2Jy9A-_4xAWAmG77_bP_XeSZvQ7Hsr6OsRNXiPpOeA/exec';
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -544,35 +544,11 @@ function EventImport() {
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const maxSize = 1600;
-      let w = img.width;
-      let h = img.height;
-
-      if (w > maxSize || h > maxSize) {
-        if (w > h) {
-          h = Math.round(h * maxSize / w);
-          w = maxSize;
-        } else {
-          w = Math.round(w * maxSize / h);
-          h = maxSize;
-        }
-      }
-
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0, w, h);
-
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-      resolve(dataUrl.split(',')[1]);
-    };
-    img.onerror = reject;
-
     const reader = new FileReader();
-    reader.onload = () => { img.src = reader.result as string; };
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(',')[1]);
+    };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
