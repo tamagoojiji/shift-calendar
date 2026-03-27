@@ -8,8 +8,9 @@ const PATTERN_LABELS: Record<string, string> = {
   am: '午前',
   pm: '午後',
   am_pm: '全日',
+  am_ten: '午前\n(10時〜)',
+  am_pm_ten: '全日\n(10時〜)',
   late: '11:30',
-  ten: '10時〜',
   off: '休',
 };
 
@@ -17,8 +18,9 @@ const PATTERN_COLORS: Record<string, string> = {
   am: '#E91E63',
   pm: '#FF9800',
   am_pm: '#E91E63',
+  am_ten: '#E91E63',
+  am_pm_ten: '#E91E63',
   late: '#9C27B0',
-  ten: '#00897B',
   off: '#9E9E9E',
 };
 
@@ -66,8 +68,6 @@ export default function ClinicCalendar() {
     const prevDay = allShifts[prevDateStr];
     const hasNightShiftPrev = prevDay?.nightShift != null;
 
-    // 木曜・土曜は午前のみ
-    if (dow === 4 || dow === 6) return 'am';
     // 日曜は休み
     if (dow === 0) return 'off';
 
@@ -75,11 +75,13 @@ export default function ClinicCalendar() {
     const thisDay = allShifts[dateStr];
     if (thisDay && thisDay.dayShift !== 'eye' && thisDay.isOff) return 'off';
 
-    // 前日夜勤 → 10時〜
-    if (hasNightShiftPrev) return 'ten';
+    // 木曜・土曜は午前のみ
+    if (dow === 4 || dow === 6) {
+      return hasNightShiftPrev ? 'am_ten' : 'am';
+    }
 
-    // 月火水金 → 全日
-    return 'am_pm';
+    // 月火水金 → 全日（前日夜勤なら10時〜付き）
+    return hasNightShiftPrev ? 'am_pm_ten' : 'am_pm';
   };
 
   const getPattern = (date: string, staffId: string): ClinicShiftPattern => {
@@ -129,7 +131,8 @@ export default function ClinicCalendar() {
     { value: 'am', label: '午前' },
     { value: 'pm', label: '午後' },
     { value: 'am_pm', label: '全日' },
-    { value: 'ten', label: '10時〜' },
+    { value: 'am_ten', label: '午前(10時)' },
+    { value: 'am_pm_ten', label: '全日(10時)' },
     { value: 'late', label: '11:30' },
     { value: 'off', label: '休' },
     { value: null, label: 'クリア' },

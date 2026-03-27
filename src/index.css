@@ -548,6 +548,8 @@ body {
 .clinic-pattern-label {
   font-size: 10px;
   font-weight: 600;
+  white-space: pre-line;
+  line-height: 1.2;
 }
 
 .clinic-pattern-picker {

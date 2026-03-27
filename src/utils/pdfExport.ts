@@ -7,8 +7,9 @@ const PATTERN_LABELS: Record<string, string> = {
   am: '午前',
   pm: '午後',
   am_pm: '全日',
+  am_ten: '午前(10時〜)',
+  am_pm_ten: '全日(10時〜)',
   late: '11:30',
-  ten: '10時〜',
   off: '休',
 };
 
@@ -16,8 +17,9 @@ const PATTERN_COLORS: Record<string, string> = {
   am: '#E91E63',
   pm: '#FF9800',
   am_pm: '#E91E63',
+  am_ten: '#E91E63',
+  am_pm_ten: '#E91E63',
   late: '#9C27B0',
-  ten: '#00897B',
   off: '#9E9E9E',
 };
 
