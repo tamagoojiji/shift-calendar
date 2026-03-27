@@ -28,12 +28,15 @@ export default function Settings() {
         <h3>シフト読込API（GAS URL）</h3>
         <p className="settings-desc">Gemini APIで画像を読み取るためのGAS Web App URLを設定します。</p>
         <input
-          type="url"
+          type="text"
           className="settings-input"
           placeholder="https://script.google.com/macros/s/..."
           value={gasUrl}
           onChange={e => setGasUrl(e.target.value)}
         />
+        <div style={{ fontSize: '10px', color: '#999', wordBreak: 'break-all', marginTop: '4px' }}>
+          保存済み: {localStorage.getItem('shift_gas_url') || '未設定'}
+        </div>
         <button className="settings-save-btn" onClick={handleSaveGasUrl}>
           {saved ? '保存しました' : '保存'}
         </button>

@@ -19,7 +19,7 @@ export default function ShiftImport() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [gasUrl] = useState(() => localStorage.getItem('shift_gas_url') || '');
+  const gasUrl = 'https://script.google.com/macros/s/AKfycbyoz4fFLLQx0Ot2aM_94ut8eT9OU9a5eEN6urWNMR-LXlBLGefznSwSRIqq4N8Ityo7Fw/exec';
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,6 +39,10 @@ export default function ShiftImport() {
       // 画像をBase64に変換
       const base64 = await fileToBase64(file);
 
+      // デバッグ: URL確認
+      console.log('GAS URL:', gasUrl);
+      console.log('Image size:', Math.round(base64.length / 1024), 'KB');
+
       // GAS経由でGemini APIに送信（text/plainでCORS対策）
       const response = await fetch(gasUrl, {
         method: 'POST',
@@ -47,6 +51,13 @@ export default function ShiftImport() {
       });
 
       const text = await response.text();
+      console.log('Response:', text.substring(0, 200));
+
+      // HTMLが返ってきた場合はエラー
+      if (text.startsWith('<!DOCTYPE') || text.startsWith('<html')) {
+        throw new Error('GASからHTMLエラーが返されました。GAS URLを確認してください。現在のURL: ' + gasUrl.substring(0, 50) + '...');
+      }
+
       const data = JSON.parse(text);
 
       if (data.error) throw new Error(data.error);
@@ -84,7 +95,7 @@ export default function ShiftImport() {
     <div className="shift-import">
       <h2 className="import-title">シフト読込</h2>
 
-      {!gasUrl && (
+      {false && (
         <div className="import-warning">
           設定タブでGAS URLを設定してください
         </div>
