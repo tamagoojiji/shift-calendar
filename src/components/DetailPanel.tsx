@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { DayData, DetailItem } from '../types';
 import { SHIFT_COLORS, SHIFT_LABELS } from '../types';
-import { saveDay } from '../utils/storage';
+import { saveDay, getDay } from '../utils/storage';
 import { WEEKDAY_LABELS } from '../utils/dateUtils';
+
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyoz4fFLLQx0Ot2aM_94ut8eT9OU9a5eEN6urWNMR-LXlBLGefznSwSRIqq4N8Ityo7Fw/exec';
 
 interface Props {
   dateStr: string;
@@ -15,6 +17,9 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
   const [adding, setAdding] = useState(false);
   const [newTime, setNewTime] = useState('');
   const [newContent, setNewContent] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
 
   const dateNum = parseInt(dateStr.slice(8));
   const dow = new Date(dateStr).getDay();
@@ -41,6 +46,63 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
     onUpdate();
   };
 
+  // 画像からイベント読込
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    setImportError(null);
+
+    try {
+      const base64 = await fileToBase64(file);
+
+      const response = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ image: base64, mimeType: file.type, action: 'event' }),
+      });
+
+      const text = await response.text();
+
+      if (text.startsWith('<!DOCTYPE') || text.startsWith('<html')) {
+        throw new Error('読み取りに失敗しました。再度お試しください。');
+      }
+
+      const data = JSON.parse(text);
+      if (data.error) throw new Error(data.error);
+
+      // 抽出されたイベントを登録
+      const events: { date: string; time: string; content: string }[] = data.events || [];
+      let addedCount = 0;
+
+      events.forEach((evt: { date: string; time: string; content: string }) => {
+        const targetDate = evt.date || dateStr;
+        const targetDay = getDay(targetDate);
+        const item: DetailItem = {
+          id: Date.now().toString() + '_' + addedCount,
+          time: evt.time || '',
+          content: evt.content || '',
+        };
+        targetDay.details = [...(targetDay.details || []), item];
+        saveDay(targetDay);
+        addedCount++;
+      });
+
+      if (addedCount > 0) {
+        alert(`${addedCount}件のイベントを登録しました`);
+        onUpdate();
+      } else {
+        setImportError('イベント情報を読み取れませんでした');
+      }
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : '読み取りに失敗しました');
+    } finally {
+      setImporting(false);
+      if (imageRef.current) imageRef.current.value = '';
+    }
+  };
+
   // シフトサマリー
   const shiftSummary = [];
   if (day.isOff) {
@@ -62,8 +124,22 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
       <div className="detail-header">
         <span className="detail-date">{dateNum}日({dayLabel})</span>
         <button className="detail-edit-btn" onClick={onEditShift}>シフト編集</button>
+        <button className="detail-img-btn" onClick={() => imageRef.current?.click()}>
+          {importing ? '読取中...' : '📷'}
+        </button>
         <button className="detail-add-btn" onClick={() => setAdding(true)}>＋</button>
+        <input
+          ref={imageRef}
+          type="file"
+          accept="image/*"
+          onChange={handleImageSelect}
+          hidden
+        />
       </div>
+
+      {importError && (
+        <div className="detail-import-error">{importError}</div>
+      )}
 
       {/* シフト表示 */}
       {shiftSummary.map((s, i) => (
@@ -104,4 +180,16 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
       )}
     </div>
   );
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(',')[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }

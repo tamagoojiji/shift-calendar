@@ -311,6 +311,20 @@ body {
   cursor: pointer;
 }
 
+.detail-img-btn {
+  background: #2196F3;
+  color: #fff;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .detail-add-btn {
   background: #4CAF50;
   color: #fff;
@@ -323,6 +337,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.detail-import-error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 8px;
 }
 
 .detail-shift-item {
