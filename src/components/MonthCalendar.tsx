@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import type { DayData, DayShiftType, NightShiftPlace, NightShiftTime } from '../types';
 import { SHIFT_COLORS, SHIFT_LABELS } from '../types';
 import { getDaysInMonth, getFirstDayOfWeek, formatDate, getToday, WEEKDAY_LABELS } from '../utils/dateUtils';
@@ -12,6 +12,8 @@ export default function MonthCalendar() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggered = useRef(false);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfWeek(year, month);
@@ -41,6 +43,7 @@ export default function MonthCalendar() {
   };
 
   const handleDateTap = (dateStr: string) => {
+    if (longPressTriggered.current) return;
     if (selectedDate === dateStr) {
       setSelectedDate(null);
     } else {
@@ -53,6 +56,21 @@ export default function MonthCalendar() {
     setEditingDate(dateStr);
     setSelectedDate(null);
   };
+
+  const handleTouchStart = useCallback((dateStr: string) => {
+    longPressTriggered.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressTriggered.current = true;
+      handleDateLongPress(dateStr);
+    }, 500);
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
 
   const handleShiftSelect = (dateStr: string, field: 'dayShift' | 'nightShift' | 'nightTime' | 'isOff', value: unknown) => {
     const day = getDay(dateStr);
@@ -97,7 +115,10 @@ export default function MonthCalendar() {
         key={dateStr}
         className={`cal-cell ${isToday ? 'cal-today' : ''} ${isSelected ? 'cal-selected' : ''} ${dow === 0 ? 'cal-sun' : dow === 6 ? 'cal-sat' : ''}`}
         onClick={() => handleDateTap(dateStr)}
-        onContextMenu={(e) => { e.preventDefault(); handleDateLongPress(dateStr); }}
+        onTouchStart={() => handleTouchStart(dateStr)}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchEnd}
+        onContextMenu={(e) => e.preventDefault()}
       >
         <div className="cal-date">
           {d}
