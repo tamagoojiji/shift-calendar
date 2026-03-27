@@ -729,6 +729,51 @@ body {
   cursor: pointer;
 }
 
+/* ===== Import Mode Tabs ===== */
+.import-mode-tabs {
+  display: flex;
+  background: #fff;
+  border-bottom: 2px solid #eee;
+}
+
+.import-mode-tab {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: #999;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+}
+
+.import-mode-tab.active {
+  color: #E91E63;
+  border-bottom-color: #E91E63;
+}
+
+.import-month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.import-month-nav button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #E91E63;
+  padding: 4px 8px;
+}
+
 .import-select {
   padding: 6px 4px;
   border: 1px solid #ddd;

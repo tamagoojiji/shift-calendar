@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react';
 import type { NightShiftPlace, NightShiftTime } from '../types';
 import { saveDay, getDay } from '../utils/storage';
+import { getDaysInMonth, formatDate, getToday, WEEKDAY_LABELS } from '../utils/dateUtils';
 
+// === 夜勤関連の型 ===
 interface ParsedShift {
   day: number;
   place: NightShiftPlace;
@@ -15,7 +17,192 @@ interface ImportResult {
   shifts: ParsedShift[];
 }
 
+// === 日勤関連の型 ===
+type DayShiftOption = 'eye_full' | 'eye_am' | 'facility' | 'off' | 'none';
+
+interface DayShiftRow {
+  day: number;
+  dow: number;
+  shift: DayShiftOption;
+}
+
 export default function ShiftImport() {
+  const [mode, setMode] = useState<'day' | 'night'>('day');
+
+  return (
+    <div className="shift-import">
+      {/* モード切替 */}
+      <div className="import-mode-tabs">
+        <button
+          className={`import-mode-tab ${mode === 'day' ? 'active' : ''}`}
+          onClick={() => setMode('day')}
+        >
+          日勤入力
+        </button>
+        <button
+          className={`import-mode-tab ${mode === 'night' ? 'active' : ''}`}
+          onClick={() => setMode('night')}
+        >
+          夜勤読込
+        </button>
+      </div>
+
+      {mode === 'day' ? <DayShiftInput /> : <NightShiftImport />}
+    </div>
+  );
+}
+
+// ========================================
+// 日勤一括入力コンポーネント
+// ========================================
+function DayShiftInput() {
+  const today = getToday();
+  const [year, setYear] = useState(Number(today.slice(0, 4)));
+  const [month, setMonth] = useState(Number(today.slice(5, 7)));
+  const daysInMonth = getDaysInMonth(year, month);
+
+  // プリセット生成: 月火水金=全日、木=午前、土=午前、日=休み
+  const generatePreset = (): DayShiftRow[] => {
+    return Array.from({ length: daysInMonth }, (_, i) => {
+      const d = i + 1;
+      const dow = new Date(year, month - 1, d).getDay();
+      let shift: DayShiftOption = 'none';
+      if (dow === 0) shift = 'off';           // 日曜=休み
+      else if (dow === 4) shift = 'eye_am';   // 木=午前
+      else if (dow === 6) shift = 'eye_am';   // 土=午前
+      else shift = 'eye_full';                // 月火水金=全日
+      return { day: d, dow, shift };
+    });
+  };
+
+  const [rows, setRows] = useState<DayShiftRow[]>(generatePreset());
+
+  // 月変更時にプリセット再生成
+  const handleMonthChange = (newYear: number, newMonth: number) => {
+    setYear(newYear);
+    setMonth(newMonth);
+    const days = getDaysInMonth(newYear, newMonth);
+    setRows(Array.from({ length: days }, (_, i) => {
+      const d = i + 1;
+      const dow = new Date(newYear, newMonth - 1, d).getDay();
+      let shift: DayShiftOption = 'none';
+      if (dow === 0) shift = 'off';
+      else if (dow === 4) shift = 'eye_am';
+      else if (dow === 6) shift = 'eye_am';
+      else shift = 'eye_full';
+      return { day: d, dow, shift };
+    }));
+  };
+
+  const prevMonth = () => {
+    if (month === 1) handleMonthChange(year - 1, 12);
+    else handleMonthChange(year, month - 1);
+  };
+
+  const nextMonth = () => {
+    if (month === 12) handleMonthChange(year + 1, 1);
+    else handleMonthChange(year, month + 1);
+  };
+
+  const updateRow = (index: number, shift: DayShiftOption) => {
+    setRows(prev => prev.map((r, i) => i === index ? { ...r, shift } : r));
+  };
+
+  const applyDayShifts = () => {
+    let count = 0;
+    rows.forEach(row => {
+      const dateStr = formatDate(year, month, row.day);
+      const day = getDay(dateStr);
+
+      if (row.shift === 'off') {
+        day.isOff = true;
+        day.dayShift = null;
+      } else if (row.shift === 'eye_full' || row.shift === 'eye_am') {
+        day.dayShift = 'eye';
+        day.isOff = false;
+      } else if (row.shift === 'facility') {
+        day.dayShift = 'facility';
+        day.isOff = false;
+      } else {
+        day.dayShift = null;
+        day.isOff = false;
+      }
+
+      saveDay(day);
+      count++;
+    });
+
+    alert(`${count}日分の日勤シフトを反映しました`);
+  };
+
+  const shiftOptions: { value: DayShiftOption; label: string; color: string }[] = [
+    { value: 'eye_full', label: '眼科(全日)', color: '#E91E63' },
+    { value: 'eye_am', label: '眼科(午前)', color: '#E91E63' },
+    { value: 'facility', label: '施設', color: '#4CAF50' },
+    { value: 'off', label: '休み', color: '#9E9E9E' },
+    { value: 'none', label: 'なし', color: '#ccc' },
+  ];
+
+  return (
+    <div>
+      {/* 月選択 */}
+      <div className="import-month-nav">
+        <button onClick={prevMonth}>◀</button>
+        <span>{year}年 {month}月</span>
+        <button onClick={nextMonth}>▶</button>
+      </div>
+
+      <p className="import-desc">眼科プリセット: 月火水金=全日、木土=午前、日=休み</p>
+
+      {/* 一括入力テーブル */}
+      <div className="import-preview">
+        <table className="import-table">
+          <thead>
+            <tr>
+              <th>日</th>
+              <th>曜日</th>
+              <th>シフト</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => {
+              const currentOpt = shiftOptions.find(o => o.value === row.shift);
+              return (
+                <tr key={row.day} style={{ background: row.dow === 0 ? '#fff5f5' : row.dow === 6 ? '#f5f8ff' : undefined }}>
+                  <td style={{ fontWeight: 600 }}>{row.day}</td>
+                  <td style={{ color: row.dow === 0 ? '#E91E63' : row.dow === 6 ? '#2196F3' : '#333' }}>
+                    {WEEKDAY_LABELS[row.dow]}
+                  </td>
+                  <td>
+                    <select
+                      value={row.shift}
+                      onChange={e => updateRow(i, e.target.value as DayShiftOption)}
+                      className="import-select"
+                      style={{ color: currentOpt?.color, fontWeight: 600 }}
+                    >
+                      {shiftOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="import-actions">
+        <button className="import-apply-btn" onClick={applyDayShifts}>カレンダーに反映</button>
+      </div>
+    </div>
+  );
+}
+
+// ========================================
+// 夜勤読込コンポーネント（画像OCR + 手動修正）
+// ========================================
+function NightShiftImport() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [editShifts, setEditShifts] = useState<ParsedShift[]>([]);
@@ -27,24 +214,13 @@ export default function ShiftImport() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!gasUrl) {
-      setError('設定タブでGAS URLを設定してください');
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      // 画像をBase64に変換
       const base64 = await fileToBase64(file);
 
-      // デバッグ: URL確認
-      console.log('GAS URL:', gasUrl);
-      console.log('Image size:', Math.round(base64.length / 1024), 'KB');
-
-      // GAS経由でGemini APIに送信（text/plainでCORS対策）
       const response = await fetch(gasUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
@@ -52,17 +228,14 @@ export default function ShiftImport() {
       });
 
       const text = await response.text();
-      console.log('Response:', text.substring(0, 200));
 
-      // HTMLが返ってきた場合はエラー
       if (text.startsWith('<!DOCTYPE') || text.startsWith('<html')) {
-        throw new Error('GASからHTMLエラーが返されました。GAS URLを確認してください。現在のURL: ' + gasUrl.substring(0, 50) + '...');
+        throw new Error('GASエラー。再度お試しください。');
       }
 
       const data = JSON.parse(text);
-
       if (data.error) throw new Error(data.error);
-      // 編集用にローカルステートにコピー
+
       setResult(data);
       setEditShifts(data.shifts.map((s: ParsedShift) => ({ ...s })));
     } catch (err) {
@@ -108,17 +281,9 @@ export default function ShiftImport() {
   };
 
   return (
-    <div className="shift-import">
-      <h2 className="import-title">シフト読込</h2>
-
-      {false && (
-        <div className="import-warning">
-          設定タブでGAS URLを設定してください
-        </div>
-      )}
-
+    <div>
       <div className="import-section">
-        <p className="import-desc">夜勤シフト表のスクリーンショットをアップロードしてください。「四ツ橋」の行を自動で読み取ります。</p>
+        <p className="import-desc">夜勤シフト表のスクリーンショットをアップロード。「四ツ橋」の行を自動で読み取ります。</p>
 
         <div className="import-upload-area" onClick={() => fileRef.current?.click()}>
           <div className="import-upload-icon">📷</div>
@@ -161,22 +326,14 @@ export default function ShiftImport() {
                 {editShifts.map((s, i) => (
                   <tr key={i}>
                     <td>
-                      <select
-                        value={s.day}
-                        onChange={e => updateShift(i, 'day', Number(e.target.value))}
-                        className="import-select"
-                      >
+                      <select value={s.day} onChange={e => updateShift(i, 'day', Number(e.target.value))} className="import-select">
                         {Array.from({ length: 31 }, (_, d) => (
                           <option key={d + 1} value={d + 1}>{d + 1}日</option>
                         ))}
                       </select>
                     </td>
                     <td>
-                      <select
-                        value={s.place || ''}
-                        onChange={e => updateShift(i, 'place', e.target.value || null)}
-                        className="import-select"
-                      >
+                      <select value={s.place || ''} onChange={e => updateShift(i, 'place', e.target.value || null)} className="import-select">
                         <option value="katano">交野</option>
                         <option value="hirakata">枚方</option>
                         <option value="kadoma">門真</option>
@@ -184,11 +341,7 @@ export default function ShiftImport() {
                       </select>
                     </td>
                     <td>
-                      <select
-                        value={s.time || '20'}
-                        onChange={e => updateShift(i, 'time', e.target.value)}
-                        className="import-select"
-                      >
+                      <select value={s.time || '20'} onChange={e => updateShift(i, 'time', e.target.value)} className="import-select">
                         <option value="17">17時〜</option>
                         <option value="20">20時〜</option>
                       </select>
@@ -208,12 +361,6 @@ export default function ShiftImport() {
           </div>
         </div>
       )}
-
-      {/* 手入力エリア（守口用） */}
-      <div className="import-section">
-        <h3>手入力（守口など）</h3>
-        <p className="import-desc">マイカレンダーで日付を長押しするとシフト入力できます。</p>
-      </div>
     </div>
   );
 }
@@ -223,7 +370,7 @@ function fileToBase64(file: File): Promise<string> {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      resolve(result.split(',')[1]); // data:...;base64, の後ろだけ
+      resolve(result.split(',')[1]);
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);
