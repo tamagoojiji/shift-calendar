@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import type { ClinicShiftPattern } from '../types';
-import { WEEKDAY_LABELS } from './dateUtils';
+import { getFirstDayOfWeek, WEEKDAY_LABELS } from './dateUtils';
 
 const PATTERN_LABELS: Record<string, string> = {
   am: '午前',
@@ -10,83 +11,163 @@ const PATTERN_LABELS: Record<string, string> = {
   off: '休',
 };
 
-export function generateClinicPDF(
+const PATTERN_COLORS: Record<string, string> = {
+  am: '#E91E63',
+  pm: '#FF9800',
+  am_pm: '#E91E63',
+  late: '#9C27B0',
+  off: '#9E9E9E',
+};
+
+export async function generateClinicPDF(
   year: number,
   month: number,
   rows: { name: string; patterns: (ClinicShiftPattern)[] }[]
 ) {
-  // A5横向き (210mm x 148mm)
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5' });
-
   const daysInMonth = rows[0]?.patterns.length || 30;
-  const marginLeft = 5;
-  const marginTop = 12;
-  const nameColWidth = 18;
-  const cellWidth = (210 - marginLeft - nameColWidth - 3) / daysInMonth;
-  const cellHeight = 8;
-  const headerHeight = 10;
+  const firstDow = getFirstDayOfWeek(year, month);
 
-  // フォント設定（日本語対応のため基本文字のみ）
-  doc.setFontSize(10);
+  // 週ごとにグループ化（日曜始まり）
+  const weeks: (number | null)[][] = [];
+  let currentWeek: (number | null)[] = [];
 
-  // タイトル
-  doc.setFontSize(11);
-  doc.text(`${year}/${month}`, marginLeft, 8);
-  doc.setFontSize(6);
-
-  // ヘッダー（日付行）
-  const tableTop = marginTop;
-  doc.setFillColor(240, 240, 240);
-  doc.rect(marginLeft, tableTop, nameColWidth + cellWidth * daysInMonth, headerHeight, 'F');
-
-  for (let d = 0; d < daysInMonth; d++) {
-    const x = marginLeft + nameColWidth + d * cellWidth;
-    const dow = new Date(year, month - 1, d + 1).getDay();
-    const dayNum = String(d + 1);
-    const dowLabel = WEEKDAY_LABELS[dow];
-
-    // 日曜は赤、土曜は青
-    if (dow === 0) doc.setTextColor(220, 50, 50);
-    else if (dow === 6) doc.setTextColor(50, 50, 220);
-    else doc.setTextColor(0, 0, 0);
-
-    doc.text(dayNum, x + cellWidth / 2, tableTop + 4, { align: 'center' });
-    doc.text(dowLabel, x + cellWidth / 2, tableTop + 8, { align: 'center' });
+  // 月初の空白
+  for (let i = 0; i < firstDow; i++) {
+    currentWeek.push(null);
   }
 
-  // データ行
-  doc.setTextColor(0, 0, 0);
-  rows.forEach((row, rowIndex) => {
-    const y = tableTop + headerHeight + rowIndex * cellHeight;
-
-    // 名前
-    doc.setFontSize(6);
-    doc.text(row.name, marginLeft + 1, y + cellHeight / 2 + 1);
-
-    // セル
-    for (let d = 0; d < daysInMonth; d++) {
-      const x = marginLeft + nameColWidth + d * cellWidth;
-      const pattern = row.patterns[d];
-
-      // セル枠線
-      doc.setDrawColor(200, 200, 200);
-      doc.rect(x, y, cellWidth, cellHeight);
-
-      if (pattern) {
-        const label = PATTERN_LABELS[pattern] || '';
-        doc.setFontSize(5);
-        doc.text(label, x + cellWidth / 2, y + cellHeight / 2 + 1, { align: 'center' });
-      }
+  for (let d = 1; d <= daysInMonth; d++) {
+    currentWeek.push(d);
+    if (currentWeek.length === 7) {
+      weeks.push(currentWeek);
+      currentWeek = [];
     }
+  }
+  if (currentWeek.length > 0) {
+    while (currentWeek.length < 7) currentWeek.push(null);
+    weeks.push(currentWeek);
+  }
+
+  // HTMLを生成
+  const container = document.createElement('div');
+  container.style.cssText = `
+    position: absolute; left: -9999px; top: 0;
+    width: 780px; background: #fff; padding: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+  `;
+
+  // タイトル
+  const title = document.createElement('div');
+  title.style.cssText = 'font-size: 18px; font-weight: 700; margin-bottom: 12px; text-align: center;';
+  title.textContent = `${year}年 ${month}月 勤務表`;
+  container.appendChild(title);
+
+  // カレンダーテーブル
+  const table = document.createElement('table');
+  table.style.cssText = 'width: 100%; border-collapse: collapse; table-layout: fixed;';
+
+  // 曜日ヘッダー
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  WEEKDAY_LABELS.forEach((label, i) => {
+    const th = document.createElement('th');
+    th.style.cssText = `
+      padding: 6px 2px; text-align: center; font-size: 12px; font-weight: 600;
+      background: #fce4ec; border: 1px solid #ddd;
+      color: ${i === 0 ? '#E91E63' : i === 6 ? '#2196F3' : '#333'};
+    `;
+    th.textContent = label;
+    headerRow.appendChild(th);
   });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
 
-  // 外枠
-  const tableHeight = headerHeight + rows.length * cellHeight;
-  doc.setDrawColor(100, 100, 100);
-  doc.rect(marginLeft, tableTop, nameColWidth + cellWidth * daysInMonth, tableHeight);
+  // 週ごとの行
+  const tbody = document.createElement('tbody');
+  weeks.forEach(week => {
+    const tr = document.createElement('tr');
+    week.forEach((day, dowIndex) => {
+      const td = document.createElement('td');
+      td.style.cssText = `
+        border: 1px solid #ddd; vertical-align: top; padding: 3px 4px;
+        height: ${rows.length <= 2 ? '80px' : '60px'}; font-size: 11px;
+      `;
 
-  // 名前列の右線
-  doc.line(marginLeft + nameColWidth, tableTop, marginLeft + nameColWidth, tableTop + tableHeight);
+      if (day !== null) {
+        // 日付
+        const dateDiv = document.createElement('div');
+        dateDiv.style.cssText = `
+          font-size: 13px; font-weight: 700; margin-bottom: 2px;
+          color: ${dowIndex === 0 ? '#E91E63' : dowIndex === 6 ? '#2196F3' : '#333'};
+        `;
+        dateDiv.textContent = String(day);
+        td.appendChild(dateDiv);
 
-  doc.save(`clinic_${year}_${String(month).padStart(2, '0')}.pdf`);
+        // 各スタッフのシフト
+        rows.forEach(staff => {
+          const pattern = staff.patterns[day - 1];
+          if (pattern) {
+            const shiftDiv = document.createElement('div');
+            shiftDiv.style.cssText = `
+              font-size: 10px; font-weight: 600; line-height: 1.4;
+              color: ${PATTERN_COLORS[pattern] || '#333'};
+            `;
+            shiftDiv.textContent = `${staff.name}: ${PATTERN_LABELS[pattern] || ''}`;
+            td.appendChild(shiftDiv);
+          }
+        });
+      }
+
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  container.appendChild(table);
+
+  // 凡例
+  const legend = document.createElement('div');
+  legend.style.cssText = 'margin-top: 8px; font-size: 10px; display: flex; gap: 12px; justify-content: center;';
+  Object.entries(PATTERN_LABELS).forEach(([key, label]) => {
+    const span = document.createElement('span');
+    span.style.cssText = 'display: flex; align-items: center; gap: 3px;';
+    const dot = document.createElement('span');
+    dot.style.cssText = `width: 8px; height: 8px; border-radius: 50%; background: ${PATTERN_COLORS[key]};`;
+    span.appendChild(dot);
+    span.appendChild(document.createTextNode(label));
+    legend.appendChild(span);
+  });
+  container.appendChild(legend);
+
+  document.body.appendChild(container);
+
+  try {
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true });
+
+    // A5横向き
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5' });
+    const pageWidth = 210;
+    const pageHeight = 148;
+    const margin = 5;
+    const maxWidth = pageWidth - margin * 2;
+    const maxHeight = pageHeight - margin * 2;
+
+    const imgRatio = canvas.width / canvas.height;
+    let imgWidth = maxWidth;
+    let imgHeight = imgWidth / imgRatio;
+
+    if (imgHeight > maxHeight) {
+      imgHeight = maxHeight;
+      imgWidth = imgHeight * imgRatio;
+    }
+
+    const x = (pageWidth - imgWidth) / 2;
+    const y = (pageHeight - imgHeight) / 2;
+
+    const imgData = canvas.toDataURL('image/png');
+    doc.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+    doc.save(`clinic_${year}_${String(month).padStart(2, '0')}.pdf`);
+  } finally {
+    document.body.removeChild(container);
+  }
 }

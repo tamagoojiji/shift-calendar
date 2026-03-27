@@ -105,15 +105,22 @@ export default function ClinicCalendar() {
     saveStaff(updated);
   };
 
-  const handleExportPDF = () => {
-    const rows: { name: string; patterns: (ClinicShiftPattern)[] }[] = staffList.map(staff => ({
-      name: staff.name,
-      patterns: Array.from({ length: daysInMonth }, (_, i) => {
-        const dateStr = formatDate(year, month, i + 1);
-        return getPattern(dateStr, staff.id);
-      }),
-    }));
-    generateClinicPDF(year, month, rows);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportPDF = async () => {
+    setExporting(true);
+    try {
+      const rows: { name: string; patterns: (ClinicShiftPattern)[] }[] = staffList.map(staff => ({
+        name: staff.name,
+        patterns: Array.from({ length: daysInMonth }, (_, i) => {
+          const dateStr = formatDate(year, month, i + 1);
+          return getPattern(dateStr, staff.id);
+        }),
+      }));
+      await generateClinicPDF(year, month, rows);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const patternOptions: { value: ClinicShiftPattern; label: string }[] = [
@@ -135,7 +142,9 @@ export default function ClinicCalendar() {
       </div>
 
       <div className="clinic-actions">
-        <button className="clinic-pdf-btn" onClick={handleExportPDF}>PDF出力</button>
+        <button className="clinic-pdf-btn" onClick={handleExportPDF} disabled={exporting}>
+          {exporting ? '出力中...' : 'PDF出力'}
+        </button>
         <button className="clinic-staff-btn" onClick={() => setShowAddStaff(!showAddStaff)}>スタッフ管理</button>
       </div>
 
