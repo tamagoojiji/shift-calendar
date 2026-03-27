@@ -100,7 +100,6 @@ export default function ShiftImport() {
             ref={fileRef}
             type="file"
             accept="image/*"
-            capture="environment"
             onChange={handleFileSelect}
             hidden
           />
