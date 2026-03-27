@@ -253,16 +253,22 @@ function ShiftEditor({ dateStr, day, onSelect, onClose }: {
             <div className="shift-section">
               <div className="shift-section-label">日勤</div>
               <div className="shift-btn-group">
-                {dayOptions.map(opt => (
-                  <button
-                    key={String(opt.value)}
-                    className={`shift-btn ${day.dayShift === opt.value ? 'active' : ''}`}
-                    style={day.dayShift === opt.value && opt.value ? { background: SHIFT_COLORS[opt.value], color: '#fff' } : {}}
-                    onClick={() => onSelect(dateStr, 'dayShift', opt.value)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+                {dayOptions.map(opt => {
+                  const isActive = day.dayShift === opt.value;
+                  return (
+                    <button
+                      key={opt.value ?? 'day-none'}
+                      className={`shift-btn ${isActive ? 'active' : ''}`}
+                      style={isActive ? {
+                        background: opt.value ? SHIFT_COLORS[opt.value] : '#999',
+                        color: '#fff',
+                      } : {}}
+                      onClick={() => onSelect(dateStr, 'dayShift', opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -270,16 +276,22 @@ function ShiftEditor({ dateStr, day, onSelect, onClose }: {
             <div className="shift-section">
               <div className="shift-section-label">夜勤</div>
               <div className="shift-btn-group">
-                {nightOptions.map(opt => (
-                  <button
-                    key={String(opt.value)}
-                    className={`shift-btn ${day.nightShift === opt.value ? 'active' : ''}`}
-                    style={day.nightShift === opt.value && opt.value ? { background: SHIFT_COLORS[opt.value], color: '#fff' } : {}}
-                    onClick={() => onSelect(dateStr, 'nightShift', opt.value)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+                {nightOptions.map(opt => {
+                  const isActive = day.nightShift === opt.value;
+                  return (
+                    <button
+                      key={opt.value ?? 'night-none'}
+                      className={`shift-btn ${isActive ? 'active' : ''}`}
+                      style={isActive ? {
+                        background: opt.value ? SHIFT_COLORS[opt.value] : '#999',
+                        color: '#fff',
+                      } : {}}
+                      onClick={() => onSelect(dateStr, 'nightShift', opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
