@@ -3,6 +3,7 @@ import type { DayData, DayShiftType, NightShiftPlace, NightShiftTime } from '../
 import { SHIFT_COLORS, SHIFT_LABELS } from '../types';
 import { getDaysInMonth, getFirstDayOfWeek, formatDate, getToday, WEEKDAY_LABELS } from '../utils/dateUtils';
 import { getDay, saveDay, loadShifts } from '../utils/storage';
+import { getHolidays } from '../utils/holidays';
 import DetailPanel from './DetailPanel';
 
 export default function MonthCalendar() {
@@ -19,6 +20,7 @@ export default function MonthCalendar() {
   const firstDay = getFirstDayOfWeek(year, month);
 
   const allShifts = useMemo(() => loadShifts(), [refreshKey, year, month]);
+  const holidays = useMemo(() => getHolidays(year), [year]);
 
   const refresh = () => setRefreshKey(k => k + 1);
 
@@ -106,6 +108,7 @@ export default function MonthCalendar() {
     const dateStr = formatDate(year, month, d);
     const day: DayData = allShifts[dateStr] || { date: dateStr, dayShift: null, nightShift: null, nightTime: null, isOff: false, details: [] };
     const dow = new Date(year, month - 1, d).getDay();
+    const holidayName = holidays.get(dateStr);
     const isToday = dateStr === today;
     const isSelected = dateStr === selectedDate;
     const detailCount = day.details?.length || 0;
@@ -113,7 +116,7 @@ export default function MonthCalendar() {
     cells.push(
       <div
         key={dateStr}
-        className={`cal-cell ${isToday ? 'cal-today' : ''} ${isSelected ? 'cal-selected' : ''} ${dow === 0 ? 'cal-sun' : dow === 6 ? 'cal-sat' : ''}`}
+        className={`cal-cell ${isToday ? 'cal-today' : ''} ${isSelected ? 'cal-selected' : ''} ${dow === 0 || holidayName ? 'cal-sun' : dow === 6 ? 'cal-sat' : ''}`}
         onClick={() => handleDateTap(dateStr)}
         onTouchStart={() => handleTouchStart(dateStr)}
         onTouchEnd={handleTouchEnd}
@@ -124,6 +127,7 @@ export default function MonthCalendar() {
           {d}
           {detailCount > 0 && <span className="cal-badge">+{detailCount}</span>}
         </div>
+        {holidayName && <div className="cal-holiday">{holidayName}</div>}
         {day.isOff ? (
           <div className="cal-shift" style={{ color: SHIFT_COLORS.off }}>休み</div>
         ) : (

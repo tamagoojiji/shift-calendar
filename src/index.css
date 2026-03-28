@@ -239,6 +239,14 @@ body {
 .cal-sun .cal-date { color: #E91E63; }
 .cal-sat .cal-date { color: #2196F3; }
 
+.cal-holiday {
+  font-size: 7px;
+  color: #E91E63;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
 .cal-badge {
   font-size: 8px;
   background: #4CAF50;
