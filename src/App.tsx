@@ -1,12 +1,73 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { TabType } from './types';
+import type { User } from 'firebase/auth';
 import MonthCalendar from './components/MonthCalendar';
 import ClinicCalendar from './components/ClinicCalendar';
 import ShiftImport from './components/ShiftImport';
 import Settings from './components/Settings';
+import { onAuthChange, loginWithGoogle, loadShiftsFromFirestore, loadClinicFromFirestore, loadStaffFromFirestore, loadSettingsFromFirestore } from './utils/firebase';
+import { setCurrentUid, restoreToLocal } from './utils/storage';
 
 export default function App() {
   const [tab, setTab] = useState<TabType>('calendar');
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthChange(async (u) => {
+      setUser(u);
+      if (u) {
+        setCurrentUid(u.uid);
+        // Firestoreからデータ復元（localStorageが空の場合）
+        try {
+          const shifts = await loadShiftsFromFirestore(u.uid);
+          const clinic = await loadClinicFromFirestore(u.uid);
+          const staff = await loadStaffFromFirestore(u.uid);
+          const settings = await loadSettingsFromFirestore(u.uid);
+          restoreToLocal(shifts, clinic, staff);
+          if (settings.geminiKey) {
+            localStorage.setItem('shift_gemini_key', settings.geminiKey);
+          }
+        } catch (err) {
+          console.error('Firestore restore error:', err);
+        }
+      } else {
+        setCurrentUid(null);
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (err) {
+      console.error('Login error:', err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="login-screen">
+        <div className="login-loading">読み込み中...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="login-screen">
+        <div className="login-card">
+          <h1 className="login-title">勤務表カレンダー</h1>
+          <p className="login-desc">シフト管理をもっと簡単に</p>
+          <button className="login-btn" onClick={handleLogin}>
+            Googleでログイン
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">

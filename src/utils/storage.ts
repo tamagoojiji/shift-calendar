@@ -1,10 +1,39 @@
 import type { DayData, ClinicMonthData, Staff } from '../types';
+import { saveShiftsToFirestore, saveClinicToFirestore, saveStaffToFirestore, saveSettingsToFirestore } from './firebase';
 
 const STORAGE_KEYS = {
   shifts: 'shift_calendar_data',
   clinic: 'shift_clinic_data',
   staff: 'shift_staff_list',
 };
+
+// 現在ログイン中のユーザーID
+let currentUid: string | null = null;
+
+export function setCurrentUid(uid: string | null) {
+  currentUid = uid;
+}
+
+// Firestoreへの非同期保存（バックグラウンド）
+function syncToFirestore(type: 'shifts' | 'clinic' | 'staff' | 'settings', data: unknown) {
+  if (!currentUid) return;
+  const uid = currentUid;
+
+  // デバウンス用
+  if (syncTimers[type]) clearTimeout(syncTimers[type]);
+  syncTimers[type] = setTimeout(async () => {
+    try {
+      if (type === 'shifts') await saveShiftsToFirestore(uid, data as Record<string, DayData>);
+      else if (type === 'clinic') await saveClinicToFirestore(uid, data as Record<string, ClinicMonthData>);
+      else if (type === 'staff') await saveStaffToFirestore(uid, data as Staff[]);
+      else if (type === 'settings') await saveSettingsToFirestore(uid, data as Record<string, string>);
+    } catch (err) {
+      console.error('Firestore sync error:', err);
+    }
+  }, 2000); // 2秒デバウンス
+}
+
+const syncTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
 // シフトデータ
 export function loadShifts(): Record<string, DayData> {
@@ -18,6 +47,7 @@ export function loadShifts(): Record<string, DayData> {
 
 export function saveShifts(data: Record<string, DayData>): void {
   localStorage.setItem(STORAGE_KEYS.shifts, JSON.stringify(data));
+  syncToFirestore('shifts', data);
 }
 
 export function getDay(date: string): DayData {
@@ -50,6 +80,7 @@ export function loadClinicData(): Record<string, ClinicMonthData> {
 
 export function saveClinicData(data: Record<string, ClinicMonthData>): void {
   localStorage.setItem(STORAGE_KEYS.clinic, JSON.stringify(data));
+  syncToFirestore('clinic', data);
 }
 
 // スタッフ
@@ -64,4 +95,18 @@ export function loadStaff(): Staff[] {
 
 export function saveStaff(staff: Staff[]): void {
   localStorage.setItem(STORAGE_KEYS.staff, JSON.stringify(staff));
+  syncToFirestore('staff', staff);
+}
+
+// Firestoreからローカルにデータ復元
+export function restoreToLocal(shifts: Record<string, DayData>, clinic: Record<string, ClinicMonthData>, staff: Staff[]) {
+  if (Object.keys(shifts).length > 0) {
+    localStorage.setItem(STORAGE_KEYS.shifts, JSON.stringify(shifts));
+  }
+  if (Object.keys(clinic).length > 0) {
+    localStorage.setItem(STORAGE_KEYS.clinic, JSON.stringify(clinic));
+  }
+  if (staff.length > 0) {
+    localStorage.setItem(STORAGE_KEYS.staff, JSON.stringify(staff));
+  }
 }

@@ -1,12 +1,23 @@
 import { useState } from 'react';
 import { SHIFT_COLORS } from '../types';
+import { logout, auth } from '../utils/firebase';
+import { saveSettingsToFirestore } from '../utils/firebase';
 
 export default function Settings() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('shift_gemini_key') || '');
   const [saved, setSaved] = useState(false);
+  const user = auth.currentUser;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     localStorage.setItem('shift_gemini_key', apiKey.trim());
+    // Firestoreにも保存
+    if (user) {
+      try {
+        await saveSettingsToFirestore(user.uid, { geminiKey: apiKey.trim() });
+      } catch (err) {
+        console.error('Settings sync error:', err);
+      }
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -19,9 +30,27 @@ export default function Settings() {
     }
   };
 
+  const handleLogout = async () => {
+    await logout();
+    window.location.reload();
+  };
+
   return (
     <div className="settings">
       <h2 className="settings-title">設定</h2>
+
+      {/* ユーザー情報 */}
+      {user && (
+        <div className="settings-section">
+          <h3>アカウント</h3>
+          <div style={{ fontSize: '13px', marginBottom: '8px' }}>
+            {user.displayName} ({user.email})
+          </div>
+          <button className="settings-logout-btn" onClick={handleLogout}>
+            ログアウト
+          </button>
+        </div>
+      )}
 
       {/* Gemini APIキー */}
       <div className="settings-section">

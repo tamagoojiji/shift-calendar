@@ -22,6 +22,60 @@ body {
   margin: 0 auto;
 }
 
+/* ===== Login Screen ===== */
+.login-screen {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #E91E63 0%, #FF5722 100%);
+}
+
+.login-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 40px 32px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  max-width: 320px;
+  width: 90%;
+}
+
+.login-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 8px;
+}
+
+.login-desc {
+  font-size: 14px;
+  color: #999;
+  margin: 0 0 32px;
+}
+
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  background: #4285F4;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.login-btn:active {
+  background: #3367D6;
+}
+
+.login-loading {
+  color: #fff;
+  font-size: 16px;
+}
+
 /* ===== App Layout ===== */
 .app {
   min-height: 100dvh;
@@ -892,6 +946,16 @@ body {
   width: 14px;
   height: 14px;
   border-radius: 50%;
+}
+
+.settings-logout-btn {
+  background: #fff;
+  color: #666;
+  border: 1px solid #ddd;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
 }
 
 .settings-danger-btn {
