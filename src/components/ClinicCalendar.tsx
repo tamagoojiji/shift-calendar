@@ -208,31 +208,16 @@ export default function ClinicCalendar() {
                   return (
                     <td
                       key={d}
-                      className="clinic-td-shift"
+                      className={`clinic-td-shift ${isEditing ? 'clinic-td-editing' : ''}`}
                       onClick={() => setEditingCell({ date: dateStr, staffId: staff.id })}
                     >
-                      {isEditing ? (
-                        <div className="clinic-pattern-picker">
-                          {patternOptions.map(opt => (
-                            <button
-                              key={String(opt.value)}
-                              className="clinic-pattern-btn"
-                              style={opt.value ? { background: PATTERN_COLORS[opt.value], color: '#fff' } : {}}
-                              onClick={(e) => { e.stopPropagation(); setPattern(dateStr, staff.id, opt.value); }}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        pattern && (
-                          <span
-                            className="clinic-pattern-label"
-                            style={{ color: PATTERN_COLORS[pattern] || '#333' }}
-                          >
-                            {PATTERN_LABELS[pattern] || ''}
-                          </span>
-                        )
+                      {pattern && (
+                        <span
+                          className="clinic-pattern-label"
+                          style={{ color: PATTERN_COLORS[pattern] || '#333' }}
+                        >
+                          {PATTERN_LABELS[pattern] || ''}
+                        </span>
                       )}
                     </td>
                   );
@@ -242,6 +227,37 @@ export default function ClinicCalendar() {
           </tbody>
         </table>
       </div>
+
+      {/* シフト入力オーバーレイ */}
+      {editingCell && (
+        <div className="shift-editor-overlay" onClick={() => setEditingCell(null)}>
+          <div className="shift-editor" onClick={e => e.stopPropagation()}>
+            <div className="shift-editor-header">
+              <span>
+                {staffList.find(s => s.id === editingCell.staffId)?.name} — {parseInt(editingCell.date.slice(8))}日({WEEKDAY_LABELS[new Date(editingCell.date).getDay()]})
+              </span>
+              <button onClick={() => setEditingCell(null)}>✕</button>
+            </div>
+            <div className="clinic-overlay-options">
+              {patternOptions.map(opt => (
+                <button
+                  key={String(opt.value)}
+                  className={`shift-btn ${getPattern(editingCell.date, editingCell.staffId) === opt.value ? 'active' : ''}`}
+                  style={opt.value ? {
+                    ...(getPattern(editingCell.date, editingCell.staffId) === opt.value
+                      ? { background: PATTERN_COLORS[opt.value], color: '#fff' }
+                      : {}),
+                  } : {}}
+                  onClick={() => setPattern(editingCell.date, editingCell.staffId, opt.value)}
+                >
+                  {opt.value && <span className="clinic-legend-dot" style={{ background: PATTERN_COLORS[opt.value] }} />}
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 凡例 */}
       <div className="clinic-legend">

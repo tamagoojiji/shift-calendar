@@ -10,6 +10,7 @@ import { setCurrentUid, restoreToLocal } from './utils/storage';
 export default function App() {
   const [tab, setTab] = useState<TabType>('calendar');
   const [loading, setLoading] = useState(true);
+  const [dataVersion, setDataVersion] = useState(0);
 
   useEffect(() => {
     // 3秒でタイムアウト（Firebase初期化が遅い場合）
@@ -28,6 +29,8 @@ export default function App() {
           if (settings.geminiKey) {
             localStorage.setItem('shift_gemini_key', settings.geminiKey);
           }
+          // Firestore復元後にコンポーネントを再マウントさせる
+          setDataVersion(v => v + 1);
         } catch (err) {
           console.error('Firestore restore error:', err);
         }
@@ -50,9 +53,9 @@ export default function App() {
   return (
     <div className="app">
       <div className="app-content">
-        {tab === 'calendar' && <MonthCalendar />}
-        {tab === 'clinic' && <ClinicCalendar />}
-        {tab === 'import' && <ShiftImport />}
+        {tab === 'calendar' && <MonthCalendar key={dataVersion} />}
+        {tab === 'clinic' && <ClinicCalendar key={dataVersion} />}
+        {tab === 'import' && <ShiftImport key={dataVersion} />}
         {tab === 'settings' && <Settings />}
       </div>
 
