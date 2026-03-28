@@ -11,12 +11,6 @@ interface ParsedShift {
   time: NightShiftTime;
 }
 
-interface ImportResult {
-  facility: string;
-  year: number;
-  month: number;
-  shifts: ParsedShift[];
-}
 
 // === 日勤関連の型 ===
 type DayShiftOption = 'eye_full' | 'eye_am' | 'facility' | 'off' | 'none';
@@ -212,10 +206,12 @@ function DayShiftInput() {
 // 夜勤読込コンポーネント（画像OCR + 手動修正）
 // ========================================
 function NightShiftImport() {
+  const today = getToday();
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<ImportResult | null>(null);
   const [editShifts, setEditShifts] = useState<ParsedShift[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [shiftYear, setShiftYear] = useState(Number(today.slice(0, 4)));
+  const [shiftMonth, setShiftMonth] = useState(Number(today.slice(5, 7)));
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -226,26 +222,27 @@ function NightShiftImport() {
 
     setLoading(true);
     setError(null);
-    setResult(null);
 
     try {
       const base64 = await fileToBase64(file);
       const data = await analyzeShiftImage(apiKey, base64, file.type);
 
-      setResult(data);
+      setShiftYear(data.year);
+      setShiftMonth(data.month);
       setEditShifts(data.shifts.map((s: ParsedShift) => ({ ...s })));
     } catch (err) {
       setError(err instanceof Error ? err.message : '読み取りに失敗しました');
     } finally {
       setLoading(false);
+      if (fileRef.current) fileRef.current.value = '';
     }
   };
 
   const applyShifts = () => {
-    if (!result) return;
+    if (editShifts.length === 0) return;
 
     editShifts.forEach(shift => {
-      const dateStr = `${result.year}-${String(result.month).padStart(2, '0')}-${String(shift.day).padStart(2, '0')}`;
+      const dateStr = `${shiftYear}-${String(shiftMonth).padStart(2, '0')}-${String(shift.day).padStart(2, '0')}`;
       const day = getDay(dateStr);
       day.nightShift = shift.place;
       day.nightTime = shift.time;
@@ -253,7 +250,6 @@ function NightShiftImport() {
     });
 
     alert(`${editShifts.length}件のシフトを反映しました`);
-    setResult(null);
     setEditShifts([]);
   };
 
@@ -266,20 +262,13 @@ function NightShiftImport() {
   };
 
   const addShift = () => {
-    setEditShifts(prev => [...prev, { day: 1, place: result?.facility as NightShiftPlace || 'kadoma', time: '20' as NightShiftTime }]);
-  };
-
-  const placeLabels: Record<string, string> = {
-    katano: '交野',
-    hirakata: '枚方',
-    kadoma: '門真',
-    moriguchi: '守口',
+    setEditShifts(prev => [...prev, { day: 1, place: 'kadoma' as NightShiftPlace, time: '20' as NightShiftTime }]);
   };
 
   return (
     <div>
       <div className="import-section">
-        <p className="import-desc">夜勤シフト表のスクリーンショットをアップロード。「四ツ橋」の行を自動で読み取ります。</p>
+        <p className="import-desc">画像で読み込むか、手入力で追加してください。</p>
 
         <div className="import-upload-area" onClick={() => fileRef.current?.click()}>
           <div className="import-upload-icon">📷</div>
@@ -305,56 +294,62 @@ function NightShiftImport() {
         <div className="import-error">{error}</div>
       )}
 
-      {result && (
-        <div className="import-result">
-          <h3>{result.year}年{result.month}月 - {placeLabels[result.facility] || result.facility}</h3>
-          <div className="import-preview">
-            <table className="import-table">
-              <thead>
-                <tr>
-                  <th>日</th>
-                  <th>施設</th>
-                  <th>時間</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {editShifts.map((s, i) => (
-                  <tr key={i}>
-                    <td>
-                      <select value={s.day} onChange={e => updateShift(i, 'day', Number(e.target.value))} className="import-select">
-                        {Array.from({ length: 31 }, (_, d) => (
-                          <option key={d + 1} value={d + 1}>{d + 1}日</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <select value={s.place || ''} onChange={e => updateShift(i, 'place', e.target.value || null)} className="import-select">
-                        <option value="katano">交野</option>
-                        <option value="hirakata">枚方</option>
-                        <option value="kadoma">門真</option>
-                        <option value="moriguchi">守口</option>
-                      </select>
-                    </td>
-                    <td>
-                      <select value={s.time || '20'} onChange={e => updateShift(i, 'time', e.target.value)} className="import-select">
-                        <option value="17">17時〜</option>
-                        <option value="20">20時〜</option>
-                      </select>
-                    </td>
-                    <td>
-                      <button className="import-remove-btn" onClick={() => removeShift(i)}>×</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button className="import-add-btn" onClick={addShift}>＋ 行を追加</button>
-          </div>
-          <div className="import-actions">
-            <button className="import-apply-btn" onClick={applyShifts}>カレンダーに反映</button>
-            <button className="import-cancel-btn" onClick={() => { setResult(null); setEditShifts([]); }}>キャンセル</button>
-          </div>
+      {/* 月選択 */}
+      <div className="import-month-nav">
+        <button onClick={() => { if (shiftMonth === 1) { setShiftYear(y => y - 1); setShiftMonth(12); } else setShiftMonth(m => m - 1); }}>◀</button>
+        <span>{shiftYear}年 {shiftMonth}月</span>
+        <button onClick={() => { if (shiftMonth === 12) { setShiftYear(y => y + 1); setShiftMonth(1); } else setShiftMonth(m => m + 1); }}>▶</button>
+      </div>
+
+      {/* 入力テーブル（常に表示） */}
+      <div className="import-preview">
+        <table className="import-table">
+          <thead>
+            <tr>
+              <th>日</th>
+              <th>施設</th>
+              <th>時間</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {editShifts.map((s, i) => (
+              <tr key={i}>
+                <td>
+                  <select value={s.day} onChange={e => updateShift(i, 'day', Number(e.target.value))} className="import-select">
+                    {Array.from({ length: 31 }, (_, d) => (
+                      <option key={d + 1} value={d + 1}>{d + 1}日</option>
+                    ))}
+                  </select>
+                </td>
+                <td>
+                  <select value={s.place || ''} onChange={e => updateShift(i, 'place', e.target.value || null)} className="import-select">
+                    <option value="katano">交野</option>
+                    <option value="hirakata">枚方</option>
+                    <option value="kadoma">門真</option>
+                    <option value="moriguchi">守口</option>
+                  </select>
+                </td>
+                <td>
+                  <select value={s.time || '20'} onChange={e => updateShift(i, 'time', e.target.value)} className="import-select">
+                    <option value="17">17時〜</option>
+                    <option value="20">20時〜</option>
+                  </select>
+                </td>
+                <td>
+                  <button className="import-remove-btn" onClick={() => removeShift(i)}>×</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <button className="import-add-btn" onClick={addShift}>＋ 行を追加</button>
+      </div>
+
+      {editShifts.length > 0 && (
+        <div className="import-actions">
+          <button className="import-apply-btn" onClick={applyShifts}>カレンダーに反映</button>
+          <button className="import-cancel-btn" onClick={() => setEditShifts([])}>クリア</button>
         </div>
       )}
     </div>
