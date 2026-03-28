@@ -379,14 +379,13 @@ function EventImport() {
 
     setLoading(true);
     setError(null);
-    setEvents([]);
 
     try {
       const base64 = await fileToBase64(file);
       const data = await analyzeEventImage(apiKey, base64, file.type);
 
       if (data.events && data.events.length > 0) {
-        setEvents(data.events);
+        setEvents(prev => [...prev, ...data.events]);
       } else {
         setError('イベント情報を読み取れませんでした');
       }
@@ -404,6 +403,11 @@ function EventImport() {
 
   const removeEvent = (index: number) => {
     setEvents(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addEvent = () => {
+    const today = getToday();
+    setEvents(prev => [...prev, { date: today, time: '', content: '' }]);
   };
 
   const applyEvents = () => {
@@ -427,7 +431,7 @@ function EventImport() {
   return (
     <div>
       <div className="import-section">
-        <p className="import-desc">イベントのチラシやスクショをアップロード。日付・時間・内容を自動で読み取りカレンダーに登録します。</p>
+        <p className="import-desc">画像で読み込むか、手入力で追加してください。</p>
 
         <div className="import-upload-area" onClick={() => fileRef.current?.click()}>
           <div className="import-upload-icon">📷</div>
@@ -453,59 +457,60 @@ function EventImport() {
         <div className="import-error">{error}</div>
       )}
 
+      {/* 入力テーブル（常に表示） */}
+      <div className="import-preview">
+        <table className="import-table">
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>時間</th>
+              <th>内容</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {events.map((evt, i) => (
+              <tr key={i}>
+                <td>
+                  <input
+                    type="date"
+                    value={evt.date}
+                    onChange={e => updateEvent(i, 'date', e.target.value)}
+                    className="import-select"
+                  />
+                </td>
+                <td>
+                  <input
+                    type="time"
+                    value={evt.time}
+                    onChange={e => updateEvent(i, 'time', e.target.value)}
+                    className="import-select"
+                    style={{ width: '80px' }}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    value={evt.content}
+                    onChange={e => updateEvent(i, 'content', e.target.value)}
+                    className="import-select"
+                    placeholder="予定内容"
+                  />
+                </td>
+                <td>
+                  <button className="import-remove-btn" onClick={() => removeEvent(i)}>×</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <button className="import-add-btn" onClick={addEvent}>＋ 行を追加</button>
+      </div>
+
       {events.length > 0 && (
-        <div className="import-result">
-          <h3>読み取り結果</h3>
-          <div className="import-preview">
-            <table className="import-table">
-              <thead>
-                <tr>
-                  <th>日付</th>
-                  <th>時間</th>
-                  <th>内容</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((evt, i) => (
-                  <tr key={i}>
-                    <td>
-                      <input
-                        type="date"
-                        value={evt.date}
-                        onChange={e => updateEvent(i, 'date', e.target.value)}
-                        className="import-select"
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="time"
-                        value={evt.time}
-                        onChange={e => updateEvent(i, 'time', e.target.value)}
-                        className="import-select"
-                        style={{ width: '80px' }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        value={evt.content}
-                        onChange={e => updateEvent(i, 'content', e.target.value)}
-                        className="import-select"
-                      />
-                    </td>
-                    <td>
-                      <button className="import-remove-btn" onClick={() => removeEvent(i)}>×</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="import-actions">
-            <button className="import-apply-btn" onClick={applyEvents}>カレンダーに反映</button>
-            <button className="import-cancel-btn" onClick={() => setEvents([])}>キャンセル</button>
-          </div>
+        <div className="import-actions">
+          <button className="import-apply-btn" onClick={applyEvents}>カレンダーに反映</button>
+          <button className="import-cancel-btn" onClick={() => setEvents([])}>クリア</button>
         </div>
       )}
     </div>
