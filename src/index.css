@@ -85,7 +85,7 @@ body {
 
 .app-content {
   flex: 1;
-  padding-bottom: var(--nav-height);
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
   overflow-y: auto;
 }
 
@@ -95,12 +95,14 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: var(--nav-height);
+  height: calc(var(--nav-height) + env(safe-area-inset-bottom));
   background: #fff;
   border-top: 1px solid #ddd;
   display: flex;
-  z-index: 100;
+  align-items: flex-start;
+  padding-top: 4px;
   padding-bottom: env(safe-area-inset-bottom);
+  z-index: 100;
 }
 
 .nav-item {
