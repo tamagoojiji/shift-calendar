@@ -4,7 +4,7 @@ const GEMINI_MODELS = [
   'gemini-2.5-pro',
 ];
 
-const DEFAULT_API_KEY = 'AIzaSyAfamEDTbJJIzCYdOOwgbeuAMM5WQd-oG4';
+const DEFAULT_API_KEY = 'AIzaSyAvoTNrs70dTCHsk9fl3r_gKo0gnBg4dDs';
 
 export function getGeminiApiKey(): string {
   return localStorage.getItem('shift_gemini_key') || DEFAULT_API_KEY;
