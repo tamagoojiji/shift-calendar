@@ -4,6 +4,12 @@ const GEMINI_MODELS = [
   'gemini-2.5-pro',
 ];
 
+const DEFAULT_API_KEY = 'AIzaSyAfamEDTbJJIzCYdOOwgbeuAMM5WQd-oG4';
+
+export function getGeminiApiKey(): string {
+  return localStorage.getItem('shift_gemini_key') || DEFAULT_API_KEY;
+}
+
 export async function callGemini(apiKey: string, prompt: string, imageBase64: string, mimeType: string): Promise<string> {
   const payload = {
     contents: [{

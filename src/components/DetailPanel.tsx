@@ -3,7 +3,7 @@ import type { DayData, DetailItem } from '../types';
 import { SHIFT_COLORS, SHIFT_LABELS } from '../types';
 import { saveDay, getDay } from '../utils/storage';
 import { WEEKDAY_LABELS } from '../utils/dateUtils';
-import { analyzeEventImage } from '../utils/gemini';
+import { analyzeEventImage, getGeminiApiKey } from '../utils/gemini';
 
 interface Props {
   dateStr: string;
@@ -54,10 +54,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
     setImportError(null);
 
     try {
-      const apiKey = localStorage.getItem('shift_gemini_key') || '';
-      if (!apiKey) {
-        throw new Error('設定タブでGemini APIキーを設定してください');
-      }
+      const apiKey = getGeminiApiKey();
 
       const base64 = await fileToBase64(file);
       const data = await analyzeEventImage(apiKey, base64, file.type);

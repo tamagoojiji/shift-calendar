@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import type { NightShiftPlace, NightShiftTime } from '../types';
 import { saveDay, getDay } from '../utils/storage';
 import { getDaysInMonth, formatDate, getToday, WEEKDAY_LABELS } from '../utils/dateUtils';
-import { analyzeShiftImage, analyzeEventImage } from '../utils/gemini';
+import { analyzeShiftImage, analyzeEventImage, getGeminiApiKey } from '../utils/gemini';
 
 // === 夜勤関連の型 ===
 interface ParsedShift {
@@ -222,11 +222,7 @@ function NightShiftImport() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const apiKey = localStorage.getItem('shift_gemini_key') || '';
-    if (!apiKey) {
-      setError('設定タブでGemini APIキーを設定してください');
-      return;
-    }
+    const apiKey = getGeminiApiKey();
 
     setLoading(true);
     setError(null);
@@ -384,11 +380,7 @@ function EventImport() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const apiKey = localStorage.getItem('shift_gemini_key') || '';
-    if (!apiKey) {
-      setError('設定タブでGemini APIキーを設定してください');
-      return;
-    }
+    const apiKey = getGeminiApiKey();
 
     setLoading(true);
     setError(null);
