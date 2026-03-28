@@ -5,7 +5,7 @@ import MonthCalendar from './components/MonthCalendar';
 import ClinicCalendar from './components/ClinicCalendar';
 import ShiftImport from './components/ShiftImport';
 import Settings from './components/Settings';
-import { onAuthChange, loginWithGoogle, handleRedirectResult, loadShiftsFromFirestore, loadClinicFromFirestore, loadStaffFromFirestore, loadSettingsFromFirestore } from './utils/firebase';
+import { onAuthChange, loginWithGoogle, loadShiftsFromFirestore, loadClinicFromFirestore, loadStaffFromFirestore, loadSettingsFromFirestore } from './utils/firebase';
 import { setCurrentUid, restoreToLocal } from './utils/storage';
 
 export default function App() {
@@ -14,9 +14,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // リダイレクトログインの結果を処理
-    handleRedirectResult();
-
     const unsubscribe = onAuthChange(async (u) => {
       setUser(u);
       if (u) {

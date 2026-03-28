@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, type User } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, type User } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import type { DayData, ClinicMonthData, Staff } from '../types';
 
@@ -17,27 +17,10 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 
 // ===== 認証 =====
-export async function loginWithGoogle(): Promise<User | null> {
+export async function loginWithGoogle(): Promise<User> {
   const provider = new GoogleAuthProvider();
-  // モバイルではリダイレクト、PCではポップアップ
-  const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
-  if (isMobile) {
-    await signInWithRedirect(auth, provider);
-    return null; // リダイレクト後にonAuthChangeで処理
-  } else {
-    const result = await signInWithPopup(auth, provider);
-    return result.user;
-  }
-}
-
-// リダイレクトログインの結果を処理
-export async function handleRedirectResult(): Promise<User | null> {
-  try {
-    const result = await getRedirectResult(auth);
-    return result?.user || null;
-  } catch {
-    return null;
-  }
+  const result = await signInWithPopup(auth, provider);
+  return result.user;
 }
 
 export async function logout(): Promise<void> {
