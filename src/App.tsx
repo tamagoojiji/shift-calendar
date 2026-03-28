@@ -12,7 +12,11 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 3秒でタイムアウト（Firebase初期化が遅い場合）
+    const timeout = setTimeout(() => setLoading(false), 3000);
+
     const unsubscribe = onAuthChange(async (u) => {
+      clearTimeout(timeout);
       if (u) {
         setCurrentUid(u.uid);
         try {
@@ -32,7 +36,7 @@ export default function App() {
       }
       setLoading(false);
     });
-    return () => unsubscribe();
+    return () => { unsubscribe(); clearTimeout(timeout); };
   }, []);
 
   if (loading) {
