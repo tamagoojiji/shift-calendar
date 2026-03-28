@@ -4,7 +4,7 @@ import MonthCalendar from './components/MonthCalendar';
 import ClinicCalendar from './components/ClinicCalendar';
 import ShiftImport from './components/ShiftImport';
 import Settings from './components/Settings';
-import { onAuthChange, loadShiftsFromFirestore, loadClinicFromFirestore, loadStaffFromFirestore, loadSettingsFromFirestore } from './utils/firebase';
+import { onAuthChange, loadShiftsFromFirestore, loadClinicFromFirestore, loadStaffFromFirestore, loadSettingsFromFirestore, loadSharedConfig } from './utils/firebase';
 import { setCurrentUid, restoreToLocal } from './utils/storage';
 
 export default function App() {
@@ -26,8 +26,18 @@ export default function App() {
           const staff = await loadStaffFromFirestore(u.uid);
           const settings = await loadSettingsFromFirestore(u.uid);
           restoreToLocal(shifts, clinic, staff);
+          // APIキー: ユーザー個別設定 → 共有設定の優先順位で取得
           if (settings.geminiKey) {
             localStorage.setItem('shift_gemini_key', settings.geminiKey);
+          } else {
+            try {
+              const shared = await loadSharedConfig();
+              if (shared.apiKey) {
+                localStorage.setItem('shift_gemini_key', shared.apiKey);
+              }
+            } catch (e) {
+              console.error('Shared config load error:', e);
+            }
           }
           // Firestore復元後にコンポーネントを再マウントさせる
           setDataVersion(v => v + 1);

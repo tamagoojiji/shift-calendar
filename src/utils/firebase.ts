@@ -87,3 +87,16 @@ export async function loadSettingsFromFirestore(uid: string): Promise<Record<str
   }
   return {};
 }
+
+// 共有設定（Gemini APIキー等）— 認証済みユーザーなら誰でも読める
+export async function loadSharedConfig(): Promise<Record<string, string>> {
+  const snap = await getDoc(doc(db, 'config', 'gemini'));
+  if (snap.exists()) {
+    return snap.data() as Record<string, string>;
+  }
+  return {};
+}
+
+export async function saveSharedConfig(config: Record<string, string>): Promise<void> {
+  await setDoc(doc(db, 'config', 'gemini'), config, { merge: true });
+}
