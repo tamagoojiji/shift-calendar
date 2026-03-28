@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { SHIFT_COLORS } from '../types';
-import { logout, auth } from '../utils/firebase';
+import { logout, loginWithGoogle, auth } from '../utils/firebase';
 import { saveSettingsToFirestore } from '../utils/firebase';
 
 export default function Settings() {
@@ -39,18 +39,30 @@ export default function Settings() {
     <div className="settings">
       <h2 className="settings-title">設定</h2>
 
-      {/* ユーザー情報 */}
-      {user && (
-        <div className="settings-section">
-          <h3>アカウント</h3>
-          <div style={{ fontSize: '13px', marginBottom: '8px' }}>
-            {user.displayName} ({user.email})
-          </div>
-          <button className="settings-logout-btn" onClick={handleLogout}>
-            ログアウト
-          </button>
-        </div>
-      )}
+      {/* アカウント */}
+      <div className="settings-section">
+        <h3>アカウント（クラウドバックアップ）</h3>
+        {user ? (
+          <>
+            <div style={{ fontSize: '13px', marginBottom: '8px' }}>
+              {user.displayName} ({user.email})
+            </div>
+            <div style={{ fontSize: '11px', color: '#4CAF50', marginBottom: '8px' }}>クラウド同期: 有効</div>
+            <button className="settings-logout-btn" onClick={handleLogout}>
+              ログアウト
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="settings-desc">Googleログインするとデータがクラウドに自動バックアップされます。ログインなしでも使えます。</p>
+            <button className="login-btn" style={{ marginTop: '8px' }} onClick={async () => {
+              try { await loginWithGoogle(); window.location.reload(); } catch (err) { alert('ログインに失敗しました。Safariブラウザから開いてお試しください。'); }
+            }}>
+              Googleでログイン
+            </button>
+          </>
+        )}
+      </div>
 
       {/* Gemini APIキー */}
       <div className="settings-section">
