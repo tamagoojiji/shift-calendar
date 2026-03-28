@@ -4,10 +4,10 @@ const GEMINI_MODELS = [
   'gemini-2.5-pro',
 ];
 
-const DEFAULT_API_KEY = 'AIzaSyAvoTNrs70dTCHsk9fl3r_gKo0gnBg4dDs';
-
 export function getGeminiApiKey(): string {
-  return localStorage.getItem('shift_gemini_key') || DEFAULT_API_KEY;
+  const key = localStorage.getItem('shift_gemini_key');
+  if (!key) throw new Error('Gemini APIキーが未設定です。設定画面からAPIキーを入力してください。');
+  return key;
 }
 
 export async function callGemini(apiKey: string, prompt: string, imageBase64: string, mimeType: string): Promise<string> {
@@ -37,7 +37,7 @@ export async function callGemini(apiKey: string, prompt: string, imageBase64: st
         return textParts.map((p: { text: string }) => p.text).join('\n').trim();
       }
 
-      if (res.status === 429 || res.status === 404 || res.status === 503) {
+      if (res.status === 403 || res.status === 429 || res.status === 404 || res.status === 503) {
         continue;
       }
 
