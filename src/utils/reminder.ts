@@ -1,12 +1,21 @@
 // リマインダー（通知）管理
 
+export type ReminderTiming = 'prev22' | '60min' | '30min';
+
 export interface ReminderEntry {
   eventId: string;      // DetailItem.id
   date: string;         // YYYY-MM-DD
   time: string;         // HH:MM
   content: string;
+  timings: ReminderTiming[];  // 選択された通知タイミング
   notified: string[];   // 通知済みタグ一覧
 }
+
+export const TIMING_LABELS: Record<ReminderTiming, string> = {
+  prev22: '前日22時',
+  '60min': '1時間前',
+  '30min': '30分前',
+};
 
 const STORAGE_KEY = 'shift_reminders';
 
@@ -24,12 +33,17 @@ function saveReminders(reminders: ReminderEntry[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
 }
 
-// リマインダー追加
-export function addReminder(eventId: string, date: string, time: string, content: string) {
+// リマインダー追加・更新
+export function setReminder(eventId: string, date: string, time: string, content: string, timings: ReminderTiming[]) {
   const reminders = getReminders();
-  // 重複チェック
-  if (reminders.some(r => r.eventId === eventId && r.date === date)) return;
-  reminders.push({ eventId, date, time, content, notified: [] });
+  const idx = reminders.findIndex(r => r.eventId === eventId && r.date === date);
+  if (idx >= 0) {
+    reminders[idx].timings = timings;
+    reminders[idx].time = time;
+    reminders[idx].content = content;
+  } else {
+    reminders.push({ eventId, date, time, content, timings, notified: [] });
+  }
   saveReminders(reminders);
 }
 
@@ -39,9 +53,15 @@ export function removeReminder(eventId: string, date: string) {
   saveReminders(reminders);
 }
 
+// リマインダー取得
+export function getReminder(eventId: string, date: string): ReminderEntry | undefined {
+  return getReminders().find(r => r.eventId === eventId && r.date === date);
+}
+
 // リマインダーがあるか確認
 export function hasReminder(eventId: string, date: string): boolean {
-  return getReminders().some(r => r.eventId === eventId && r.date === date);
+  const r = getReminder(eventId, date);
+  return !!r && r.timings.length > 0;
 }
 
 // 通知権限リクエスト
@@ -66,14 +86,14 @@ export async function registerServiceWorker() {
 
 // 通知チェック＆発火（定期実行用）
 export async function checkAndFireReminders() {
-  if (Notification.permission !== 'granted') return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
   const now = new Date();
   const reminders = getReminders();
   let updated = false;
 
   for (const r of reminders) {
-    if (!r.time) continue; // 時間未設定はスキップ
+    if (!r.time) continue;
 
     const eventDate = new Date(`${r.date}T${r.time}:00`);
     if (isNaN(eventDate.getTime())) continue;
@@ -82,45 +102,37 @@ export async function checkAndFireReminders() {
     const diffMin = diffMs / 60000;
 
     // 前日22時
-    const prevDay22 = new Date(eventDate);
-    prevDay22.setDate(prevDay22.getDate() - 1);
-    prevDay22.setHours(22, 0, 0, 0);
-    const tag22 = `prev22_${r.eventId}_${r.date}`;
-    if (!r.notified.includes(tag22) && now >= prevDay22 && diffMs > 0) {
-      await showNotification(
-        '📅 明日の予定',
-        `${r.time} ${r.content}`,
-        tag22
-      );
-      r.notified.push(tag22);
-      updated = true;
+    if (r.timings.includes('prev22')) {
+      const prevDay22 = new Date(eventDate);
+      prevDay22.setDate(prevDay22.getDate() - 1);
+      prevDay22.setHours(22, 0, 0, 0);
+      const tag = `prev22_${r.eventId}_${r.date}`;
+      if (!r.notified.includes(tag) && now >= prevDay22 && diffMs > 0) {
+        await showNotification('📅 明日の予定', `${r.time} ${r.content}`, tag);
+        r.notified.push(tag);
+        updated = true;
+      }
     }
 
     // 1時間前
-    const tag60 = `60min_${r.eventId}_${r.date}`;
-    if (!r.notified.includes(tag60) && diffMin <= 60 && diffMin > 30) {
-      await showNotification(
-        '⏰ 1時間前',
-        `${r.time} ${r.content}`,
-        tag60
-      );
-      r.notified.push(tag60);
-      updated = true;
+    if (r.timings.includes('60min')) {
+      const tag = `60min_${r.eventId}_${r.date}`;
+      if (!r.notified.includes(tag) && diffMin <= 60 && diffMin > 30) {
+        await showNotification('⏰ 1時間前', `${r.time} ${r.content}`, tag);
+        r.notified.push(tag);
+        updated = true;
+      }
     }
 
     // 30分前
-    const tag30 = `30min_${r.eventId}_${r.date}`;
-    if (!r.notified.includes(tag30) && diffMin <= 30 && diffMin > 0) {
-      await showNotification(
-        '🔔 30分前',
-        `${r.time} ${r.content}`,
-        tag30
-      );
-      r.notified.push(tag30);
-      updated = true;
+    if (r.timings.includes('30min')) {
+      const tag = `30min_${r.eventId}_${r.date}`;
+      if (!r.notified.includes(tag) && diffMin <= 30 && diffMin > 0) {
+        await showNotification('🔔 30分前', `${r.time} ${r.content}`, tag);
+        r.notified.push(tag);
+        updated = true;
+      }
     }
-
-    // 過去のイベントは削除対象
   }
 
   // 過去のイベントを削除
@@ -141,7 +153,6 @@ async function showNotification(title: string, body: string, tag: string) {
     const reg = await navigator.serviceWorker.ready;
     reg.active?.postMessage({ type: 'SHOW_NOTIFICATION', title, body, tag });
   } catch {
-    // SW未対応の場合はNotification APIで直接
     new Notification(title, { body, tag });
   }
 }

@@ -699,6 +699,30 @@ body {
   opacity: 1;
 }
 
+.reminder-timing-picker {
+  display: flex;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--surface-container-low);
+  border-radius: var(--radius-md);
+  margin-bottom: 4px;
+}
+
+.reminder-timing-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--on-surface);
+  cursor: pointer;
+}
+
+.reminder-timing-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
 .detail-add-form {
   display: flex;
   gap: 8px;

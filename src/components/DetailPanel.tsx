@@ -4,7 +4,8 @@ import { SHIFT_COLORS, SHIFT_LABELS } from '../types';
 import { saveDay, getDay } from '../utils/storage';
 import { WEEKDAY_LABELS } from '../utils/dateUtils';
 import { analyzeEventImage, getGeminiApiKey } from '../utils/gemini';
-import { addReminder, removeReminder, hasReminder, requestNotificationPermission } from '../utils/reminder';
+import { setReminder, removeReminder, hasReminder, getReminder, requestNotificationPermission, TIMING_LABELS } from '../utils/reminder';
+import type { ReminderTiming } from '../utils/reminder';
 
 interface Props {
   dateStr: string;
@@ -25,6 +26,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
   const [editContent, setEditContent] = useState('');
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [reminderItemId, setReminderItemId] = useState<string | null>(null);
   const imageRef = useRef<HTMLInputElement>(null);
   const composingRef = useRef(false);
 
@@ -245,29 +247,27 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
             <button className="detail-item-delete" onClick={() => { removeDetail(item.id); setEditingItemId(null); }}>削除</button>
           </div>
         ) : (
-          <div key={item.id} className="detail-item">
-            <div className="detail-item-time" onClick={() => startEditDetail(item)}>{item.time || '--:--'}</div>
-            <div className="detail-item-content" onClick={() => startEditDetail(item)}>{item.content}</div>
-            {item.time && (
-              <button
-                className={`detail-reminder-btn ${hasReminder(item.id, dateStr) ? 'active' : ''}`}
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  if (hasReminder(item.id, dateStr)) {
-                    removeReminder(item.id, dateStr);
-                  } else {
-                    const ok = await requestNotificationPermission();
-                    if (ok) {
-                      addReminder(item.id, dateStr, item.time, item.content);
-                    } else {
-                      alert('通知を許可してください');
-                    }
-                  }
-                  onUpdate();
-                }}
-              >
-                {hasReminder(item.id, dateStr) ? '🔔' : '🔕'}
-              </button>
+          <div key={item.id}>
+            <div className="detail-item">
+              <div className="detail-item-time" onClick={() => startEditDetail(item)}>{item.time || '--:--'}</div>
+              <div className="detail-item-content" onClick={() => startEditDetail(item)}>{item.content}</div>
+              {item.time && (
+                <button
+                  className={`detail-reminder-btn ${hasReminder(item.id, dateStr) ? 'active' : ''}`}
+                  onClick={() => setReminderItemId(reminderItemId === item.id ? null : item.id)}
+                >
+                  {hasReminder(item.id, dateStr) ? '🔔' : '🔕'}
+                </button>
+              )}
+            </div>
+            {reminderItemId === item.id && item.time && (
+              <ReminderTimingPicker
+                eventId={item.id}
+                date={dateStr}
+                time={item.time}
+                content={item.content}
+                onUpdate={onUpdate}
+              />
             )}
           </div>
         )
@@ -332,6 +332,50 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
           <button className="detail-cancel-btn" onClick={() => { setAdding(false); setUseRange(false); setRangeEnd(''); setRepeatType('daily'); }}>取消</button>
         </div>
       )}
+    </div>
+  );
+}
+
+function ReminderTimingPicker({ eventId, date, time, content, onUpdate }: {
+  eventId: string;
+  date: string;
+  time: string;
+  content: string;
+  onUpdate: () => void;
+}) {
+  const existing = getReminder(eventId, date);
+  const currentTimings = existing?.timings || [];
+
+  const toggle = async (timing: ReminderTiming) => {
+    const ok = await requestNotificationPermission();
+    if (!ok) {
+      alert('通知を許可してください');
+      return;
+    }
+    const newTimings = currentTimings.includes(timing)
+      ? currentTimings.filter(t => t !== timing)
+      : [...currentTimings, timing];
+
+    if (newTimings.length === 0) {
+      removeReminder(eventId, date);
+    } else {
+      setReminder(eventId, date, time, content, newTimings);
+    }
+    onUpdate();
+  };
+
+  return (
+    <div className="reminder-timing-picker">
+      {(Object.entries(TIMING_LABELS) as [ReminderTiming, string][]).map(([key, label]) => (
+        <label key={key} className="reminder-timing-item">
+          <input
+            type="checkbox"
+            checked={currentTimings.includes(key)}
+            onChange={() => toggle(key)}
+          />
+          <span>{label}</span>
+        </label>
+      ))}
     </div>
   );
 }
