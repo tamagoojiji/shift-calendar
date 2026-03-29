@@ -5,6 +5,7 @@ import { getDaysInMonth, getFirstDayOfWeek, formatDate, getToday, WEEKDAY_LABELS
 import { getDay, saveDay, loadShifts, getSavedMonth, saveCurrentMonth } from '../utils/storage';
 import { getHolidays } from '../utils/holidays';
 import DetailPanel from './DetailPanel';
+import { useSwipe } from '../hooks/useSwipe';
 
 export default function MonthCalendar() {
   const today = getToday();
@@ -25,23 +26,23 @@ export default function MonthCalendar() {
 
   const refresh = () => setRefreshKey(k => k + 1);
 
-  const prevMonth = () => {
-    const newY = month === 1 ? year - 1 : year;
-    const newM = month === 1 ? 12 : month - 1;
-    setYear(newY); setMonth(newM);
-    saveCurrentMonth(newY, newM);
+  const prevMonth = useCallback(() => {
+    setYear(y => { const newY = month === 1 ? y - 1 : y; return newY; });
+    setMonth(m => m === 1 ? 12 : m - 1);
+    saveCurrentMonth(month === 1 ? year - 1 : year, month === 1 ? 12 : month - 1);
     setSelectedDate(null);
     setEditingDate(null);
-  };
+  }, [year, month]);
 
-  const nextMonth = () => {
-    const newY = month === 12 ? year + 1 : year;
-    const newM = month === 12 ? 1 : month + 1;
-    setYear(newY); setMonth(newM);
-    saveCurrentMonth(newY, newM);
+  const nextMonth = useCallback(() => {
+    setYear(y => { const newY = month === 12 ? y + 1 : y; return newY; });
+    setMonth(m => m === 12 ? 1 : m + 1);
+    saveCurrentMonth(month === 12 ? year + 1 : year, month === 12 ? 1 : month + 1);
     setSelectedDate(null);
     setEditingDate(null);
-  };
+  }, [year, month]);
+
+  const swipeHandlers = useSwipe(nextMonth, prevMonth);
 
   const goToday = () => {
     const d = new Date();
@@ -176,7 +177,7 @@ export default function MonthCalendar() {
       </div>
 
       {/* カレンダーグリッド */}
-      <div className="cal-grid">
+      <div className="cal-grid" {...swipeHandlers}>
         {cells}
       </div>
 

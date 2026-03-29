@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { getDaysInMonth, formatDate, WEEKDAY_LABELS } from '../utils/dateUtils';
 import { getSavedMonth, saveCurrentMonth, loadShifts, getDay, saveDay } from '../utils/storage';
 import { getHolidays } from '../utils/holidays';
+import { useSwipe } from '../hooks/useSwipe';
 import { parkHours } from '../data/hours';
 import { ticketPrices, getPriceLevel, formatPrice } from '../data/tickets';
 import { annualPassExcluded } from '../data/annual-pass';
@@ -92,21 +93,23 @@ export default function ParkCalendar() {
   const firstDay = new Date(year, month - 1, 1).getDay();
   const holidays = useMemo(() => getHolidays(year), [year]);
 
-  const prevMonth = () => {
+  const prevMonth = useCallback(() => {
     const newY = month === 1 ? year - 1 : year;
     const newM = month === 1 ? 12 : month - 1;
     setYear(newY); setMonth(newM);
     saveCurrentMonth(newY, newM);
     setSelectedDate(null);
-  };
+  }, [year, month]);
 
-  const nextMonth = () => {
+  const nextMonth = useCallback(() => {
     const newY = month === 12 ? year + 1 : year;
     const newM = month === 12 ? 1 : month + 1;
     setYear(newY); setMonth(newM);
     saveCurrentMonth(newY, newM);
     setSelectedDate(null);
-  };
+  }, [year, month]);
+
+  const swipeHandlers = useSwipe(nextMonth, prevMonth);
 
   const getCellContent = (dateStr: string) => {
     switch (activeTab) {
@@ -243,7 +246,7 @@ export default function ParkCalendar() {
       </div>
 
       {/* グリッド */}
-      <div className="cal-grid">
+      <div className="cal-grid" {...swipeHandlers}>
         {cells}
       </div>
 
