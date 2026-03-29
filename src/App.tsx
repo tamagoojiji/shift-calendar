@@ -7,6 +7,7 @@ import ShiftImport from './components/ShiftImport';
 import Settings from './components/Settings';
 import { onAuthChange, loadShiftsFromFirestore, loadClinicFromFirestore, loadStaffFromFirestore, loadSettingsFromFirestore, loadSharedConfig } from './utils/firebase';
 import { setCurrentUid, restoreToLocal } from './utils/storage';
+import { registerServiceWorker, checkAndFireReminders, requestNotificationPermission } from './utils/reminder';
 
 export default function App() {
   const [tab, setTab] = useState<TabType>('calendar');
@@ -51,6 +52,17 @@ export default function App() {
       setLoading(false);
     });
     return () => { unsubscribe(); clearTimeout(timeout); };
+  }, []);
+
+  // Service Worker登録 & リマインダー定期チェック
+  useEffect(() => {
+    registerServiceWorker();
+    requestNotificationPermission();
+    // 初回チェック
+    checkAndFireReminders();
+    // 1分ごとにチェック
+    const interval = setInterval(checkAndFireReminders, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   if (loading) {

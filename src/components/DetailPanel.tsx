@@ -4,6 +4,7 @@ import { SHIFT_COLORS, SHIFT_LABELS } from '../types';
 import { saveDay, getDay } from '../utils/storage';
 import { WEEKDAY_LABELS } from '../utils/dateUtils';
 import { analyzeEventImage, getGeminiApiKey } from '../utils/gemini';
+import { addReminder, removeReminder, hasReminder, requestNotificationPermission } from '../utils/reminder';
 
 interface Props {
   dateStr: string;
@@ -244,9 +245,30 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
             <button className="detail-item-delete" onClick={() => { removeDetail(item.id); setEditingItemId(null); }}>削除</button>
           </div>
         ) : (
-          <div key={item.id} className="detail-item" onClick={() => startEditDetail(item)}>
-            <div className="detail-item-time">{item.time || '--:--'}</div>
-            <div className="detail-item-content">{item.content}</div>
+          <div key={item.id} className="detail-item">
+            <div className="detail-item-time" onClick={() => startEditDetail(item)}>{item.time || '--:--'}</div>
+            <div className="detail-item-content" onClick={() => startEditDetail(item)}>{item.content}</div>
+            {item.time && (
+              <button
+                className={`detail-reminder-btn ${hasReminder(item.id, dateStr) ? 'active' : ''}`}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (hasReminder(item.id, dateStr)) {
+                    removeReminder(item.id, dateStr);
+                  } else {
+                    const ok = await requestNotificationPermission();
+                    if (ok) {
+                      addReminder(item.id, dateStr, item.time, item.content);
+                    } else {
+                      alert('通知を許可してください');
+                    }
+                  }
+                  onUpdate();
+                }}
+              >
+                {hasReminder(item.id, dateStr) ? '🔔' : '🔕'}
+              </button>
+            )}
           </div>
         )
       ))}
