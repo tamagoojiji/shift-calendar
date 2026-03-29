@@ -357,6 +357,11 @@ body {
   line-height: 12px;
 }
 
+/* Spacer for empty day shift row */
+.cal-chip-spacer {
+  height: 11px;
+}
+
 /* ===== Shift Chips ===== */
 .cal-chip {
   border-radius: 2px;
