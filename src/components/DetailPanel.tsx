@@ -24,6 +24,9 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editTime, setEditTime] = useState('');
   const [editContent, setEditContent] = useState('');
+  const [editUseRange, setEditUseRange] = useState(false);
+  const [editRangeEnd, setEditRangeEnd] = useState('');
+  const [editRepeatType, setEditRepeatType] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [reminderItemId, setReminderItemId] = useState<string | null>(null);
@@ -114,15 +117,68 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
     setEditingItemId(item.id);
     setEditTime(item.time);
     setEditContent(item.content);
+    setEditUseRange(false);
+    setEditRangeEnd('');
+    setEditRepeatType('daily');
   };
 
   const saveEditDetail = () => {
     if (!editingItemId || !editContent.trim()) return;
+    const content = editContent.trim();
+    const time = editTime;
+
+    // 現在の日のイベントを更新
     day.details = (day.details || []).map(d =>
-      d.id === editingItemId ? { ...d, time: editTime, content: editContent.trim() } : d
+      d.id === editingItemId ? { ...d, time, content } : d
     );
     saveDay(day);
+
+    // 期間指定がONなら他の日にもコピー
+    if (editUseRange && editRangeEnd && editRangeEnd >= dateStr) {
+      const start = new Date(dateStr);
+      const end = new Date(editRangeEnd);
+      let count = 0;
+
+      const addToDate = (ds: string) => {
+        if (ds === dateStr) return; // 現在の日は更新済み
+        const targetDay = getDay(ds);
+        const item: DetailItem = {
+          id: Date.now().toString() + '_e' + count,
+          time,
+          content,
+        };
+        targetDay.details = [...(targetDay.details || []), item];
+        saveDay(targetDay);
+        count++;
+      };
+
+      if (editRepeatType === 'daily') {
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          addToDate(d.toISOString().slice(0, 10));
+        }
+      } else if (editRepeatType === 'weekly') {
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 7)) {
+          addToDate(d.toISOString().slice(0, 10));
+        }
+      } else if (editRepeatType === 'monthly') {
+        const dayOfMonth = start.getDate();
+        for (let d = new Date(start); d <= end; ) {
+          addToDate(d.toISOString().slice(0, 10));
+          d.setMonth(d.getMonth() + 1);
+          d.setDate(dayOfMonth);
+        }
+      } else if (editRepeatType === 'yearly') {
+        for (let d = new Date(start); d <= end; ) {
+          addToDate(d.toISOString().slice(0, 10));
+          d.setFullYear(d.getFullYear() + 1);
+        }
+      }
+    }
+
     setEditingItemId(null);
+    setEditUseRange(false);
+    setEditRangeEnd('');
+    setEditRepeatType('daily');
     onUpdate();
   };
 
@@ -242,8 +298,44 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
               onKeyDown={e => { if (e.key === 'Enter' && !composingRef.current) saveEditDetail(); }}
               autoFocus
             />
+            <div className="detail-range-row">
+              <label className="detail-range-toggle">
+                <input
+                  type="checkbox"
+                  checked={editUseRange}
+                  onChange={e => { setEditUseRange(e.target.checked); if (!e.target.checked) { setEditRangeEnd(''); setEditRepeatType('daily'); } }}
+                />
+                <span>期間指定</span>
+              </label>
+              {editUseRange && (
+                <>
+                  <div className="detail-repeat-btns">
+                    {([['daily', '毎日'], ['weekly', '毎週'], ['monthly', '毎月'], ['yearly', '毎年']] as const).map(([val, label]) => (
+                      <button
+                        key={val}
+                        className={`detail-repeat-btn ${editRepeatType === val ? 'active' : ''}`}
+                        onClick={() => setEditRepeatType(val)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="detail-range-dates">
+                    <span className="detail-range-label">{dateStr.slice(5).replace('-', '/')}</span>
+                    <span>〜</span>
+                    <input
+                      type="date"
+                      value={editRangeEnd}
+                      min={dateStr}
+                      onChange={e => setEditRangeEnd(e.target.value)}
+                      className="detail-input-date"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
             <button className="detail-save-btn" onClick={saveEditDetail}>保存</button>
-            <button className="detail-cancel-btn" onClick={() => setEditingItemId(null)}>取消</button>
+            <button className="detail-cancel-btn" onClick={() => { setEditingItemId(null); setEditUseRange(false); setEditRangeEnd(''); setEditRepeatType('daily'); }}>取消</button>
             <button className="detail-item-delete" onClick={() => { removeDetail(item.id); setEditingItemId(null); }}>削除</button>
           </div>
         ) : (
