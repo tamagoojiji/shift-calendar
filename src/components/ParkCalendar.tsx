@@ -123,7 +123,7 @@ export default function ParkCalendar() {
         const price = ticketPrices[dateStr];
         if (!price) return null;
         const level = getPriceLevel(price);
-        return { text: `${(price / 1000).toFixed(1)}k`, color: PRICE_COLORS[level] };
+        return { text: `¥${price.toLocaleString()}`, color: PRICE_COLORS[level] };
       }
       case 'annual': {
         const excluded = annualPassExcluded.has(dateStr);
