@@ -46,7 +46,7 @@ body {
 }
 
 #root {
-  max-width: 100%;
+  max-width: 480px;
   margin: 0 auto;
 }
 
@@ -1481,4 +1481,28 @@ body {
   padding: 10px 16px;
   font-size: 11px;
   flex-wrap: wrap;
+}
+
+/* ===== PC Responsive ===== */
+@media (min-width: 481px) {
+  body {
+    background: var(--surface-container-low);
+  }
+
+  #root {
+    background: var(--background);
+    min-height: 100dvh;
+    box-shadow: 0 0 40px rgba(45, 51, 53, 0.08);
+  }
+
+  .bottom-nav {
+    max-width: 480px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 0;
+  }
+
+  .shift-editor-overlay .shift-editor {
+    max-width: 480px;
+  }
 }
