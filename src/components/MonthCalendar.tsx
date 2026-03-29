@@ -102,12 +102,21 @@ export default function MonthCalendar() {
     refresh();
   };
 
+  // 月名（日本語）
+  const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+
   // カレンダーセルの描画
   const cells = [];
 
-  // 空白セル（月初の曜日まで）
+  // 空白セル（月初の曜日まで）- 前月の日付を表示
+  const prevMonthDays = getDaysInMonth(month === 1 ? year - 1 : year, month === 1 ? 12 : month - 1);
   for (let i = 0; i < firstDay; i++) {
-    cells.push(<div key={`empty-${i}`} className="cal-cell cal-cell-empty" />);
+    const prevDay = prevMonthDays - firstDay + 1 + i;
+    cells.push(
+      <div key={`empty-${i}`} className="cal-cell cal-cell-empty">
+        <span className="cal-date">{prevDay}</span>
+      </div>
+    );
   }
 
   for (let d = 1; d <= daysInMonth; d++) {
@@ -135,19 +144,23 @@ export default function MonthCalendar() {
         </div>
         {holidayName && <div className="cal-holiday">{holidayName}</div>}
         {day.isOff ? (
-          <div className="cal-shift" style={{ color: SHIFT_COLORS.off }}>休み</div>
+          <div className="cal-chip cal-chip-off">
+            <span className="cal-chip-text">休み</span>
+          </div>
         ) : (
           <>
-            <div className="cal-shift" style={{ color: day.dayShift ? SHIFT_COLORS[day.dayShift] : 'transparent' }}>
-              {day.dayShift ? SHIFT_LABELS[day.dayShift] : '\u00A0'}
-            </div>
+            {day.dayShift && (
+              <div className={`cal-chip cal-chip-${day.dayShift}`}>
+                <span className="cal-chip-text">日勤:{SHIFT_LABELS[day.dayShift]}</span>
+              </div>
+            )}
             {day.nightShift && (
               <>
-                <div className="cal-shift cal-night-time" style={{ color: SHIFT_COLORS[day.nightShift] }}>
-                  {day.nightTime === '17' ? '17時' : '20時'}
+                <div className={`cal-chip cal-chip-${day.nightShift}`}>
+                  <span className="cal-chip-text">{day.nightTime === '17' ? '17時' : '20時'}</span>
                 </div>
-                <div className="cal-shift" style={{ color: SHIFT_COLORS[day.nightShift] }}>
-                  {SHIFT_LABELS[day.nightShift]}
+                <div className={`cal-chip cal-chip-${day.nightShift}`}>
+                  <span className="cal-chip-text">{SHIFT_LABELS[day.nightShift]}</span>
                 </div>
               </>
             )}
@@ -161,10 +174,15 @@ export default function MonthCalendar() {
     <div className="month-calendar">
       {/* ヘッダー */}
       <div className="cal-header">
-        <button className="cal-nav-btn" onClick={prevMonth}>◀</button>
-        <span className="cal-title">{year}年 {month}月</span>
-        <button className="cal-nav-btn" onClick={nextMonth}>▶</button>
-        <button className="cal-today-btn" onClick={goToday}>今日</button>
+        <div className="cal-header-left">
+          <span className="cal-title">{monthNames[month - 1]}</span>
+          <span className="cal-year">{year}年</span>
+        </div>
+        <div className="cal-header-right">
+          <button className="cal-today-btn" onClick={goToday}>今日</button>
+          <button className="cal-nav-btn" onClick={prevMonth}>◀</button>
+          <button className="cal-nav-btn" onClick={nextMonth}>▶</button>
+        </div>
       </div>
 
       {/* 曜日ヘッダー */}
@@ -177,8 +195,10 @@ export default function MonthCalendar() {
       </div>
 
       {/* カレンダーグリッド */}
-      <div className="cal-grid" {...swipeHandlers}>
-        {cells}
+      <div className="cal-grid-wrap">
+        <div className="cal-grid" {...swipeHandlers}>
+          {cells}
+        </div>
       </div>
 
       {/* シフト入力パネル */}
