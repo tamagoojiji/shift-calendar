@@ -16,6 +16,9 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
   const [adding, setAdding] = useState(false);
   const [newTime, setNewTime] = useState('');
   const [newContent, setNewContent] = useState('');
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editTime, setEditTime] = useState('');
+  const [editContent, setEditContent] = useState('');
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const imageRef = useRef<HTMLInputElement>(null);
@@ -42,6 +45,22 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
   const removeDetail = (id: string) => {
     day.details = (day.details || []).filter(d => d.id !== id);
     saveDay(day);
+    onUpdate();
+  };
+
+  const startEditDetail = (item: DetailItem) => {
+    setEditingItemId(item.id);
+    setEditTime(item.time);
+    setEditContent(item.content);
+  };
+
+  const saveEditDetail = () => {
+    if (!editingItemId || !editContent.trim()) return;
+    day.details = (day.details || []).map(d =>
+      d.id === editingItemId ? { ...d, time: editTime, content: editContent.trim() } : d
+    );
+    saveDay(day);
+    setEditingItemId(null);
     onUpdate();
   };
 
@@ -109,7 +128,6 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
     <div className="detail-panel">
       <div className="detail-header">
         <span className="detail-date">{dateNum}日({dayLabel})</span>
-        <button className="detail-edit-btn" onClick={onEditShift}>シフト編集</button>
         <button className="detail-img-btn" onClick={() => imageRef.current?.click()}>
           {importing ? '読取中...' : '📷'}
         </button>
@@ -127,20 +145,49 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
         <div className="detail-import-error">{importError}</div>
       )}
 
-      {/* シフト表示 */}
-      {shiftSummary.map((s, i) => (
-        <div key={i} className="detail-shift-item" style={{ borderLeftColor: s.color }}>
-          {s.label}
+      {/* シフト表示（タップで編集） */}
+      {shiftSummary.length > 0 ? (
+        <div className="detail-shift-tap" onClick={onEditShift}>
+          {shiftSummary.map((s, i) => (
+            <div key={i} className="detail-shift-item" style={{ borderLeftColor: s.color }}>
+              {s.label}
+            </div>
+          ))}
         </div>
-      ))}
+      ) : (
+        <div className="detail-shift-empty" onClick={onEditShift}>
+          タップしてシフトを入力
+        </div>
+      )}
 
-      {/* 詳細一覧 */}
+      {/* 詳細一覧（タップで編集） */}
       {sortedDetails.map(item => (
-        <div key={item.id} className="detail-item">
-          <div className="detail-item-time">{item.time || '--:--'}</div>
-          <div className="detail-item-content">{item.content}</div>
-          <button className="detail-item-delete" onClick={() => removeDetail(item.id)}>×</button>
-        </div>
+        editingItemId === item.id ? (
+          <div key={item.id} className="detail-add-form">
+            <input
+              type="time"
+              value={editTime}
+              onChange={e => setEditTime(e.target.value)}
+              className="detail-input-time"
+            />
+            <input
+              type="text"
+              value={editContent}
+              onChange={e => setEditContent(e.target.value)}
+              className="detail-input-content"
+              onKeyDown={e => e.key === 'Enter' && saveEditDetail()}
+              autoFocus
+            />
+            <button className="detail-save-btn" onClick={saveEditDetail}>保存</button>
+            <button className="detail-cancel-btn" onClick={() => setEditingItemId(null)}>取消</button>
+            <button className="detail-item-delete" onClick={() => { removeDetail(item.id); setEditingItemId(null); }}>削除</button>
+          </div>
+        ) : (
+          <div key={item.id} className="detail-item" onClick={() => startEditDetail(item)}>
+            <div className="detail-item-time">{item.time || '--:--'}</div>
+            <div className="detail-item-content">{item.content}</div>
+          </div>
+        )
       ))}
 
       {/* 追加フォーム */}
