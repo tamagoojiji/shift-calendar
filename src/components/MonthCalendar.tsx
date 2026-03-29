@@ -150,9 +150,7 @@ export default function MonthCalendar() {
         ) : (
           <>
             {day.isOff ? (
-              <div className="cal-chip cal-chip-off">
-                <span className="cal-chip-text">休み</span>
-              </div>
+              <div className="cal-chip-spacer" />
             ) : day.dayShift ? (
               <div className={`cal-chip cal-chip-${day.dayShift}`}>
                 <span className="cal-chip-text">{SHIFT_LABELS[day.dayShift]}</span>
