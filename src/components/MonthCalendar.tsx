@@ -151,7 +151,7 @@ export default function MonthCalendar() {
           <>
             {day.dayShift ? (
               <div className={`cal-chip cal-chip-${day.dayShift}`}>
-                <span className="cal-chip-text">日勤:{SHIFT_LABELS[day.dayShift]}</span>
+                <span className="cal-chip-text">{SHIFT_LABELS[day.dayShift]}</span>
               </div>
             ) : (
               <div className="cal-chip-spacer" />
