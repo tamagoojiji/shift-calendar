@@ -687,6 +687,21 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+.detail-shift-row {
+  display: flex;
+  gap: 8px;
+}
+
+.detail-shift-row .detail-shift-item {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.detail-shift-empty-block {
+  border-left-color: transparent !important;
+  background: transparent;
+}
+
 .detail-shift-item {
   padding: 10px 14px;
   border-left: 4px solid;

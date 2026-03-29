@@ -226,17 +226,24 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
     }
   };
 
-  // シフトサマリー
-  const shiftSummary = [];
+  // シフトサマリー（常に2ブロック: 日勤 | 夜勤）
+  const shiftSummary: { label: string; color: string }[] = [];
   if (day.isOff) {
     shiftSummary.push({ label: '休み', color: SHIFT_COLORS.off });
+    shiftSummary.push({ label: '', color: 'transparent' });
   } else {
+    // 日勤ブロック（空でも枠を確保）
     if (day.dayShift) {
       shiftSummary.push({ label: SHIFT_LABELS[day.dayShift], color: SHIFT_COLORS[day.dayShift] });
+    } else {
+      shiftSummary.push({ label: '', color: 'transparent' });
     }
+    // 夜勤ブロック（空でも枠を確保）
     if (day.nightShift) {
       const timeLabel = day.nightTime === '17' ? '17:00〜' : '20:00〜';
       shiftSummary.push({ label: `${SHIFT_LABELS[day.nightShift]} ${timeLabel}`, color: SHIFT_COLORS[day.nightShift] });
+    } else {
+      shiftSummary.push({ label: '', color: 'transparent' });
     }
   }
 
@@ -265,10 +272,10 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
 
       {/* シフト表示（タップで編集） */}
       {shiftSummary.length > 0 ? (
-        <div className="detail-shift-tap" onClick={onEditShift}>
+        <div className="detail-shift-tap detail-shift-row" onClick={onEditShift}>
           {shiftSummary.map((s, i) => (
-            <div key={i} className="detail-shift-item" style={{ borderLeftColor: s.color }}>
-              {s.label}
+            <div key={i} className={`detail-shift-item ${!s.label ? 'detail-shift-empty-block' : ''}`} style={{ borderLeftColor: s.color }}>
+              {s.label || '\u00A0'}
             </div>
           ))}
         </div>
