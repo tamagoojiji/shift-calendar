@@ -9,12 +9,16 @@ import { useSwipe } from '../hooks/useSwipe';
 
 export default function MonthCalendar() {
   const today = getToday();
+  const todayDate = new Date();
+  const todayYM = { y: todayDate.getFullYear(), m: todayDate.getMonth() + 1 };
   const saved = getSavedMonth();
   const [year, setYear] = useState(saved.year);
   const [month, setMonth] = useState(saved.month);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(year);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
 
@@ -48,6 +52,20 @@ export default function MonthCalendar() {
     const d = new Date();
     setYear(d.getFullYear());
     setMonth(d.getMonth() + 1);
+  };
+
+  const openPicker = () => {
+    setPickerYear(year);
+    setShowPicker(true);
+  };
+
+  const selectMonth = (m: number) => {
+    setYear(pickerYear);
+    setMonth(m);
+    saveCurrentMonth(pickerYear, m);
+    setSelectedDate(null);
+    setEditingDate(null);
+    setShowPicker(false);
   };
 
   const handleDateTap = (dateStr: string) => {
@@ -178,9 +196,9 @@ export default function MonthCalendar() {
     <div className="month-calendar">
       {/* ヘッダー */}
       <div className="cal-header">
-        <div className="cal-header-left">
+        <div className="cal-header-left" onClick={openPicker} style={{ cursor: 'pointer' }}>
           <span className="cal-title">{monthNames[month - 1]}</span>
-          <span className="cal-year">{year}年</span>
+          <span className="cal-year">{year}年 ▾</span>
         </div>
         <div className="cal-header-right">
           <button className="cal-today-btn" onClick={goToday}>今日</button>
@@ -188,6 +206,30 @@ export default function MonthCalendar() {
           <button className="cal-nav-btn" onClick={nextMonth}>▶</button>
         </div>
       </div>
+
+      {/* 年月ピッカー */}
+      {showPicker && (
+        <div className="cal-picker-overlay" onClick={() => setShowPicker(false)}>
+          <div className="cal-picker" onClick={e => e.stopPropagation()}>
+            <div className="cal-picker-year-row">
+              <button className="cal-picker-year-btn" onClick={() => setPickerYear(y => y - 1)}>◀</button>
+              <span className="cal-picker-year">{pickerYear}年</span>
+              <button className="cal-picker-year-btn" onClick={() => setPickerYear(y => y + 1)}>▶</button>
+            </div>
+            <div className="cal-picker-months">
+              {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                <button
+                  key={m}
+                  className={`cal-picker-month ${pickerYear === year && m === month ? 'active' : ''} ${pickerYear === todayYM.y && m === todayYM.m ? 'today' : ''}`}
+                  onClick={() => selectMonth(m)}
+                >
+                  {m}月
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 曜日ヘッダー */}
       <div className="cal-weekdays">
