@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { getDaysInMonth, formatDate, WEEKDAY_LABELS } from '../utils/dateUtils';
 import { getSavedMonth, saveCurrentMonth, loadShifts, getDay, saveDay } from '../utils/storage';
 import { getHolidays } from '../utils/holidays';
@@ -6,7 +6,8 @@ import { useSwipe } from '../hooks/useSwipe';
 import { parkHours } from '../data/hours';
 import { ticketPrices, getPriceLevel, formatPrice } from '../data/tickets';
 import { annualPassExcluded } from '../data/annual-pass';
-import { privateEvents } from '../data/private-events';
+import { fetchPrivateEvents } from '../data/private-events';
+import type { PrivateEvent } from '../data/private-events';
 import type { DetailItem } from '../types';
 
 type ParkTab = 'hours' | 'tickets' | 'annual' | 'private' | 'events';
@@ -33,6 +34,12 @@ export default function ParkCalendar() {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editTime, setEditTime] = useState('');
   const [editContent, setEditContent] = useState('');
+  const [privateEvents, setPrivateEvents] = useState<Record<string, PrivateEvent>>({});
+
+  // 貸切データ取得
+  useEffect(() => {
+    fetchPrivateEvents().then(setPrivateEvents);
+  }, []);
 
   // イベントデータ読込（refreshKeyで再読込トリガー）
   const allShifts = useMemo(() => {
