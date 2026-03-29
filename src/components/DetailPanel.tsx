@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import type { DayData, DetailItem } from '../types';
 import { SHIFT_COLORS, SHIFT_LABELS } from '../types';
 import { saveDay, getDay } from '../utils/storage';
@@ -22,6 +22,10 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const imageRef = useRef<HTMLInputElement>(null);
+  const composingRef = useRef(false);
+
+  const handleCompositionStart = useCallback(() => { composingRef.current = true; }, []);
+  const handleCompositionEnd = useCallback(() => { composingRef.current = false; }, []);
 
   const dateNum = parseInt(dateStr.slice(8));
   const dow = new Date(dateStr).getDay();
@@ -175,7 +179,9 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
               value={editContent}
               onChange={e => setEditContent(e.target.value)}
               className="detail-input-content"
-              onKeyDown={e => e.key === 'Enter' && saveEditDetail()}
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
+              onKeyDown={e => { if (e.key === 'Enter' && !composingRef.current) saveEditDetail(); }}
               autoFocus
             />
             <button className="detail-save-btn" onClick={saveEditDetail}>保存</button>
@@ -205,7 +211,9 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
             value={newContent}
             onChange={e => setNewContent(e.target.value)}
             className="detail-input-content"
-            onKeyDown={e => e.key === 'Enter' && addDetail()}
+            onCompositionStart={handleCompositionStart}
+            onCompositionEnd={handleCompositionEnd}
+            onKeyDown={e => { if (e.key === 'Enter' && !composingRef.current) addDetail(); }}
           />
           <button className="detail-save-btn" onClick={addDetail}>保存</button>
           <button className="detail-cancel-btn" onClick={() => setAdding(false)}>取消</button>
