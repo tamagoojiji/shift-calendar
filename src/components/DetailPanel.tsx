@@ -18,6 +18,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
   const [newContent, setNewContent] = useState('');
   const [useRange, setUseRange] = useState(false);
   const [rangeEnd, setRangeEnd] = useState('');
+  const [repeatType, setRepeatType] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editTime, setEditTime] = useState('');
   const [editContent, setEditContent] = useState('');
@@ -39,12 +40,11 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
     const time = newTime;
 
     if (useRange && rangeEnd && rangeEnd >= dateStr) {
-      // 期間指定: 開始日〜終了日の全日に登録
       const start = new Date(dateStr);
       const end = new Date(rangeEnd);
       let count = 0;
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const ds = d.toISOString().slice(0, 10);
+
+      const addToDate = (ds: string) => {
         const targetDay = ds === dateStr ? day : getDay(ds);
         const item: DetailItem = {
           id: Date.now().toString() + '_' + count,
@@ -54,6 +54,32 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
         targetDay.details = [...(targetDay.details || []), item];
         saveDay(targetDay);
         count++;
+      };
+
+      if (repeatType === 'daily') {
+        // 毎日
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          addToDate(d.toISOString().slice(0, 10));
+        }
+      } else if (repeatType === 'weekly') {
+        // 毎週（同じ曜日）
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 7)) {
+          addToDate(d.toISOString().slice(0, 10));
+        }
+      } else if (repeatType === 'monthly') {
+        // 毎月（同じ日付）
+        const dayOfMonth = start.getDate();
+        for (let d = new Date(start); d <= end; ) {
+          addToDate(d.toISOString().slice(0, 10));
+          d.setMonth(d.getMonth() + 1);
+          d.setDate(dayOfMonth);
+        }
+      } else if (repeatType === 'yearly') {
+        // 毎年（同じ月日）
+        for (let d = new Date(start); d <= end; ) {
+          addToDate(d.toISOString().slice(0, 10));
+          d.setFullYear(d.getFullYear() + 1);
+        }
       }
     } else {
       // 単日
@@ -71,6 +97,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
     setNewContent('');
     setUseRange(false);
     setRangeEnd('');
+    setRepeatType('daily');
     onUpdate();
   };
 
@@ -248,26 +275,39 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
               <input
                 type="checkbox"
                 checked={useRange}
-                onChange={e => { setUseRange(e.target.checked); if (!e.target.checked) setRangeEnd(''); }}
+                onChange={e => { setUseRange(e.target.checked); if (!e.target.checked) { setRangeEnd(''); setRepeatType('daily'); } }}
               />
               <span>期間指定</span>
             </label>
             {useRange && (
-              <div className="detail-range-dates">
-                <span className="detail-range-label">{dateStr.slice(5).replace('-', '/')}</span>
-                <span>〜</span>
-                <input
-                  type="date"
-                  value={rangeEnd}
-                  min={dateStr}
-                  onChange={e => setRangeEnd(e.target.value)}
-                  className="detail-input-date"
-                />
-              </div>
+              <>
+                <div className="detail-repeat-btns">
+                  {([['daily', '毎日'], ['weekly', '毎週'], ['monthly', '毎月'], ['yearly', '毎年']] as const).map(([val, label]) => (
+                    <button
+                      key={val}
+                      className={`detail-repeat-btn ${repeatType === val ? 'active' : ''}`}
+                      onClick={() => setRepeatType(val)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="detail-range-dates">
+                  <span className="detail-range-label">{dateStr.slice(5).replace('-', '/')}</span>
+                  <span>〜</span>
+                  <input
+                    type="date"
+                    value={rangeEnd}
+                    min={dateStr}
+                    onChange={e => setRangeEnd(e.target.value)}
+                    className="detail-input-date"
+                  />
+                </div>
+              </>
             )}
           </div>
           <button className="detail-save-btn" onClick={addDetail}>保存</button>
-          <button className="detail-cancel-btn" onClick={() => { setAdding(false); setUseRange(false); setRangeEnd(''); }}>取消</button>
+          <button className="detail-cancel-btn" onClick={() => { setAdding(false); setUseRange(false); setRangeEnd(''); setRepeatType('daily'); }}>取消</button>
         </div>
       )}
     </div>
