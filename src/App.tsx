@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { TabType } from './types';
 import MonthCalendar from './components/MonthCalendar';
 import ClinicCalendar from './components/ClinicCalendar';
+import ParkCalendar from './components/ParkCalendar';
 import ShiftImport from './components/ShiftImport';
 import Settings from './components/Settings';
 import { onAuthChange, loadShiftsFromFirestore, loadClinicFromFirestore, loadStaffFromFirestore, loadSettingsFromFirestore, loadSharedConfig } from './utils/firebase';
@@ -65,6 +66,7 @@ export default function App() {
       <div className="app-content">
         {tab === 'calendar' && <MonthCalendar key={dataVersion} />}
         {tab === 'clinic' && <ClinicCalendar key={dataVersion} />}
+        {tab === 'park' && <ParkCalendar key={dataVersion} />}
         {tab === 'import' && <ShiftImport key={dataVersion} />}
         {tab === 'settings' && <Settings />}
       </div>
@@ -83,6 +85,13 @@ export default function App() {
         >
           <span className="nav-icon">🏥</span>
           <span className="nav-label">眼科</span>
+        </button>
+        <button
+          className={`nav-item ${tab === 'park' ? 'active' : ''}`}
+          onClick={() => setTab('park')}
+        >
+          <span className="nav-icon">🎢</span>
+          <span className="nav-label">パーク</span>
         </button>
         <button
           className={`nav-item ${tab === 'import' ? 'active' : ''}`}

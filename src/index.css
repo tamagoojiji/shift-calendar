@@ -1212,3 +1212,126 @@ body {
   font-size: 13px;
   cursor: pointer;
 }
+
+/* ===== Park Calendar ===== */
+.park-calendar {
+  padding-bottom: 16px;
+}
+
+.park-tabs {
+  display: flex;
+  gap: 0;
+  background: var(--surface-container-lowest);
+  border-bottom: 1px solid var(--surface-container-high);
+}
+
+.park-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: none;
+  background: none;
+  color: var(--outline);
+  font-family: var(--font-body);
+  font-size: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.park-tab-active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.park-tab-icon {
+  font-size: 16px;
+}
+
+.park-tab-label {
+  font-weight: 600;
+}
+
+.park-cell {
+  min-height: 52px;
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-sm);
+  padding: 2px 3px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+
+.park-cell-empty {
+  background: var(--surface-container-low);
+  cursor: default;
+}
+
+.park-cell:active {
+  background: var(--surface-container-high);
+}
+
+.park-today {
+  background: var(--primary-container);
+}
+
+.park-selected {
+  background: var(--secondary-container);
+  box-shadow: inset 0 0 0 2px rgba(15, 103, 132, 0.2);
+}
+
+.park-date {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.park-cell-value {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: pre-line;
+}
+
+.park-detail {
+  background: var(--surface-container-lowest);
+  padding: 16px;
+  padding-bottom: calc(16px + var(--nav-height));
+}
+
+.park-detail-header {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.park-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--surface-container-high);
+  font-size: 14px;
+}
+
+.park-detail-label {
+  color: var(--on-surface-variant);
+  font-weight: 500;
+}
+
+.park-detail-value {
+  font-weight: 600;
+}
+
+.park-legend {
+  display: flex;
+  gap: 12px;
+  padding: 10px 16px;
+  font-size: 11px;
+  flex-wrap: wrap;
+}
