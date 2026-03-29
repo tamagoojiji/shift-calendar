@@ -6,10 +6,23 @@ import { getDay, saveDay, loadShifts } from '../utils/storage';
 import { getHolidays } from '../utils/holidays';
 import DetailPanel from './DetailPanel';
 
+function getSavedMonth(key: string): { year: number; month: number } {
+  const today = getToday();
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      const { year, month } = JSON.parse(saved);
+      if (year && month) return { year, month };
+    }
+  } catch {}
+  return { year: Number(today.slice(0, 4)), month: Number(today.slice(5, 7)) };
+}
+
 export default function MonthCalendar() {
   const today = getToday();
-  const [year, setYear] = useState(Number(today.slice(0, 4)));
-  const [month, setMonth] = useState(Number(today.slice(5, 7)));
+  const saved = getSavedMonth('shift_last_month');
+  const [year, setYear] = useState(saved.year);
+  const [month, setMonth] = useState(saved.month);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -24,16 +37,24 @@ export default function MonthCalendar() {
 
   const refresh = () => setRefreshKey(k => k + 1);
 
+  const saveMonth = (y: number, m: number) => {
+    localStorage.setItem('shift_last_month', JSON.stringify({ year: y, month: m }));
+  };
+
   const prevMonth = () => {
-    if (month === 1) { setYear(y => y - 1); setMonth(12); }
-    else setMonth(m => m - 1);
+    const newY = month === 1 ? year - 1 : year;
+    const newM = month === 1 ? 12 : month - 1;
+    setYear(newY); setMonth(newM);
+    saveMonth(newY, newM);
     setSelectedDate(null);
     setEditingDate(null);
   };
 
   const nextMonth = () => {
-    if (month === 12) { setYear(y => y + 1); setMonth(1); }
-    else setMonth(m => m + 1);
+    const newY = month === 12 ? year + 1 : year;
+    const newM = month === 12 ? 1 : month + 1;
+    setYear(newY); setMonth(newM);
+    saveMonth(newY, newM);
     setSelectedDate(null);
     setEditingDate(null);
   };

@@ -24,10 +24,22 @@ const PATTERN_COLORS: Record<string, string> = {
   off: '#9E9E9E',
 };
 
-export default function ClinicCalendar() {
+function getSavedClinicMonth(): { year: number; month: number } {
   const today = getToday();
-  const [year, setYear] = useState(Number(today.slice(0, 4)));
-  const [month, setMonth] = useState(Number(today.slice(5, 7)));
+  try {
+    const saved = localStorage.getItem('shift_last_clinic_month');
+    if (saved) {
+      const { year, month } = JSON.parse(saved);
+      if (year && month) return { year, month };
+    }
+  } catch {}
+  return { year: Number(today.slice(0, 4)), month: Number(today.slice(5, 7)) };
+}
+
+export default function ClinicCalendar() {
+  const saved = getSavedClinicMonth();
+  const [year, setYear] = useState(saved.year);
+  const [month, setMonth] = useState(saved.month);
   const [staffList, setStaffList] = useState<Staff[]>(loadStaff());
   const [editingCell, setEditingCell] = useState<{ date: string; staffId: string } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -41,14 +53,22 @@ export default function ClinicCalendar() {
 
   const refresh = () => setRefreshKey(k => k + 1);
 
+  const saveClinicMonth = (y: number, m: number) => {
+    localStorage.setItem('shift_last_clinic_month', JSON.stringify({ year: y, month: m }));
+  };
+
   const prevMonth = () => {
-    if (month === 1) { setYear(y => y - 1); setMonth(12); }
-    else setMonth(m => m - 1);
+    const newY = month === 1 ? year - 1 : year;
+    const newM = month === 1 ? 12 : month - 1;
+    setYear(newY); setMonth(newM);
+    saveClinicMonth(newY, newM);
   };
 
   const nextMonth = () => {
-    if (month === 12) { setYear(y => y + 1); setMonth(1); }
-    else setMonth(m => m + 1);
+    const newY = month === 12 ? year + 1 : year;
+    const newM = month === 12 ? 1 : month + 1;
+    setYear(newY); setMonth(newM);
+    saveClinicMonth(newY, newM);
   };
 
   const setPattern = (date: string, staffId: string, pattern: ClinicShiftPattern) => {
