@@ -1,13 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { getDaysInMonth, formatDate, WEEKDAY_LABELS } from '../utils/dateUtils';
-import { getSavedMonth, saveCurrentMonth } from '../utils/storage';
+import { getSavedMonth, saveCurrentMonth, loadShifts, getDay, saveDay } from '../utils/storage';
 import { getHolidays } from '../utils/holidays';
 import { parkHours } from '../data/hours';
 import { ticketPrices, getPriceLevel, formatPrice } from '../data/tickets';
 import { annualPassExcluded } from '../data/annual-pass';
 import { privateEvents } from '../data/private-events';
+import type { DetailItem } from '../types';
 
-type ParkTab = 'hours' | 'tickets' | 'annual' | 'private';
+type ParkTab = 'hours' | 'tickets' | 'annual' | 'private' | 'events';
 
 const PRICE_COLORS: Record<string, string> = {
   low: '#4CAF50',
@@ -22,6 +23,70 @@ export default function ParkCalendar() {
   const [month, setMonth] = useState(saved.month);
   const [activeTab, setActiveTab] = useState<ParkTab>('hours');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // イベント編集用state
+  const [adding, setAdding] = useState(false);
+  const [newTime, setNewTime] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editTime, setEditTime] = useState('');
+  const [editContent, setEditContent] = useState('');
+
+  // イベントデータ読込（refreshKeyで再読込トリガー）
+  const allShifts = useMemo(() => {
+    void refreshKey; // dependency
+    return loadShifts();
+  }, [refreshKey]);
+
+  const refreshData = useCallback(() => {
+    setRefreshKey(k => k + 1);
+  }, []);
+
+  // イベント追加
+  const addEvent = useCallback(() => {
+    if (!selectedDate || !newContent.trim()) return;
+    const day = getDay(selectedDate);
+    const item: DetailItem = {
+      id: Date.now().toString(),
+      time: newTime,
+      content: newContent.trim(),
+    };
+    day.details = [...(day.details || []), item];
+    saveDay(day);
+    setAdding(false);
+    setNewTime('');
+    setNewContent('');
+    refreshData();
+  }, [selectedDate, newTime, newContent, refreshData]);
+
+  // イベント削除
+  const removeEvent = useCallback((id: string) => {
+    if (!selectedDate) return;
+    const day = getDay(selectedDate);
+    day.details = (day.details || []).filter(d => d.id !== id);
+    saveDay(day);
+    setEditingItemId(null);
+    refreshData();
+  }, [selectedDate, refreshData]);
+
+  // イベント編集保存
+  const saveEditEvent = useCallback(() => {
+    if (!selectedDate || !editingItemId || !editContent.trim()) return;
+    const day = getDay(selectedDate);
+    day.details = (day.details || []).map(d =>
+      d.id === editingItemId ? { ...d, time: editTime, content: editContent.trim() } : d
+    );
+    saveDay(day);
+    setEditingItemId(null);
+    refreshData();
+  }, [selectedDate, editingItemId, editTime, editContent, refreshData]);
+
+  const startEditEvent = useCallback((item: DetailItem) => {
+    setEditingItemId(item.id);
+    setEditTime(item.time);
+    setEditContent(item.content);
+  }, []);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = new Date(year, month - 1, 1).getDay();
@@ -65,6 +130,12 @@ export default function ParkCalendar() {
         const evt = privateEvents[dateStr];
         if (!evt) return null;
         return { text: '貸切', color: '#9C27B0' };
+      }
+      case 'events': {
+        const dayData = allShifts[dateStr];
+        const count = dayData?.details?.length || 0;
+        if (count === 0) return null;
+        return { text: `${count}件`, color: '#FF5722' };
       }
     }
   };
@@ -116,7 +187,11 @@ export default function ParkCalendar() {
       <div
         key={dateStr}
         className={`park-cell ${isToday ? 'park-today' : ''} ${isSelected ? 'park-selected' : ''} ${dow === 0 || holidayName ? 'cal-sun' : dow === 6 ? 'cal-sat' : ''}`}
-        onClick={() => setSelectedDate(selectedDate === dateStr ? null : dateStr)}
+        onClick={() => {
+          setSelectedDate(selectedDate === dateStr ? null : dateStr);
+          setEditingItemId(null);
+          setAdding(false);
+        }}
       >
         <div className="park-date">{d}</div>
         {content && (
@@ -133,6 +208,7 @@ export default function ParkCalendar() {
     { id: 'tickets', label: 'チケット', icon: '💰' },
     { id: 'annual', label: '年パス', icon: '🎫' },
     { id: 'private', label: '貸切', icon: '🔒' },
+    { id: 'events', label: 'イベント', icon: '🗓' },
   ];
 
   return (
@@ -172,7 +248,7 @@ export default function ParkCalendar() {
       </div>
 
       {/* 詳細パネル */}
-      {selectedDate && (
+      {selectedDate && activeTab !== 'events' && (
         <div className="park-detail">
           <div className="park-detail-header">
             {parseInt(selectedDate.slice(8))}日({WEEKDAY_LABELS[new Date(selectedDate).getDay()]})
@@ -185,6 +261,75 @@ export default function ParkCalendar() {
           ))}
         </div>
       )}
+
+      {/* イベント詳細パネル */}
+      {selectedDate && activeTab === 'events' && (() => {
+        const dayData = allShifts[selectedDate];
+        const details = [...(dayData?.details || [])].sort((a, b) => a.time.localeCompare(b.time));
+        return (
+          <div className="park-detail">
+            <div className="park-detail-header">
+              <span>{parseInt(selectedDate.slice(8))}日({WEEKDAY_LABELS[new Date(selectedDate).getDay()]})</span>
+              <button className="detail-add-btn" onClick={() => setAdding(true)}>＋</button>
+            </div>
+
+            {details.length === 0 && !adding && (
+              <div className="park-event-empty" onClick={() => setAdding(true)}>タップして予定を追加</div>
+            )}
+
+            {details.map(item => (
+              editingItemId === item.id ? (
+                <div key={item.id} className="detail-add-form">
+                  <input
+                    type="time"
+                    value={editTime}
+                    onChange={e => setEditTime(e.target.value)}
+                    className="detail-input-time"
+                  />
+                  <input
+                    type="text"
+                    value={editContent}
+                    onChange={e => setEditContent(e.target.value)}
+                    className="detail-input-content"
+                    onKeyDown={e => e.key === 'Enter' && saveEditEvent()}
+                    autoFocus
+                  />
+                  <button className="detail-save-btn" onClick={saveEditEvent}>保存</button>
+                  <button className="detail-cancel-btn" onClick={() => setEditingItemId(null)}>取消</button>
+                  <button className="detail-item-delete" onClick={() => removeEvent(item.id)}>削除</button>
+                </div>
+              ) : (
+                <div key={item.id} className="detail-item" onClick={() => startEditEvent(item)}>
+                  <div className="detail-item-time">{item.time || '--:--'}</div>
+                  <div className="detail-item-content">{item.content}</div>
+                </div>
+              )
+            ))}
+
+            {adding && (
+              <div className="detail-add-form">
+                <input
+                  type="time"
+                  value={newTime}
+                  onChange={e => setNewTime(e.target.value)}
+                  className="detail-input-time"
+                />
+                <input
+                  type="text"
+                  placeholder="予定内容"
+                  value={newContent}
+                  onChange={e => setNewContent(e.target.value)}
+                  className="detail-input-content"
+                  onKeyDown={e => e.key === 'Enter' && addEvent()}
+                  autoFocus
+                />
+                <button className="detail-save-btn" onClick={addEvent}>保存</button>
+                <button className="detail-cancel-btn" onClick={() => { setAdding(false); setNewTime(''); setNewContent(''); }}>取消</button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* チケット凡例 */}
       {activeTab === 'tickets' && (

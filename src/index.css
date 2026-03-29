@@ -563,7 +563,7 @@ body {
   border-radius: var(--radius-lg);
   background: var(--surface-container-low);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   color: var(--on-surface);
   transition: background 0.2s, box-shadow 0.2s;
 }
@@ -582,7 +582,7 @@ body {
   border-radius: var(--radius-lg);
   background: var(--surface-container-low);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   color: var(--on-surface);
   transition: background 0.2s, box-shadow 0.2s;
 }
@@ -1308,6 +1308,19 @@ body {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.park-event-empty {
+  color: var(--on-surface-variant);
+  font-size: 14px;
+  padding: 16px 0;
+  text-align: center;
+  cursor: pointer;
+  border: 1px dashed var(--surface-container-high);
+  border-radius: var(--radius-md, 8px);
 }
 
 .park-detail-row {
