@@ -16,6 +16,8 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
   const [adding, setAdding] = useState(false);
   const [newTime, setNewTime] = useState('');
   const [newContent, setNewContent] = useState('');
+  const [useRange, setUseRange] = useState(false);
+  const [rangeEnd, setRangeEnd] = useState('');
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editTime, setEditTime] = useState('');
   const [editContent, setEditContent] = useState('');
@@ -33,16 +35,42 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
 
   const addDetail = () => {
     if (!newContent.trim()) return;
-    const item: DetailItem = {
-      id: Date.now().toString(),
-      time: newTime,
-      content: newContent.trim(),
-    };
-    day.details = [...(day.details || []), item];
-    saveDay(day);
+    const content = newContent.trim();
+    const time = newTime;
+
+    if (useRange && rangeEnd && rangeEnd >= dateStr) {
+      // 期間指定: 開始日〜終了日の全日に登録
+      const start = new Date(dateStr);
+      const end = new Date(rangeEnd);
+      let count = 0;
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const ds = d.toISOString().slice(0, 10);
+        const targetDay = ds === dateStr ? day : getDay(ds);
+        const item: DetailItem = {
+          id: Date.now().toString() + '_' + count,
+          time,
+          content,
+        };
+        targetDay.details = [...(targetDay.details || []), item];
+        saveDay(targetDay);
+        count++;
+      }
+    } else {
+      // 単日
+      const item: DetailItem = {
+        id: Date.now().toString(),
+        time,
+        content,
+      };
+      day.details = [...(day.details || []), item];
+      saveDay(day);
+    }
+
     setAdding(false);
     setNewTime('');
     setNewContent('');
+    setUseRange(false);
+    setRangeEnd('');
     onUpdate();
   };
 
@@ -215,8 +243,31 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
             onCompositionEnd={handleCompositionEnd}
             onKeyDown={e => { if (e.key === 'Enter' && !composingRef.current) addDetail(); }}
           />
+          <div className="detail-range-row">
+            <label className="detail-range-toggle">
+              <input
+                type="checkbox"
+                checked={useRange}
+                onChange={e => { setUseRange(e.target.checked); if (!e.target.checked) setRangeEnd(''); }}
+              />
+              <span>期間指定</span>
+            </label>
+            {useRange && (
+              <div className="detail-range-dates">
+                <span className="detail-range-label">{dateStr.slice(5).replace('-', '/')}</span>
+                <span>〜</span>
+                <input
+                  type="date"
+                  value={rangeEnd}
+                  min={dateStr}
+                  onChange={e => setRangeEnd(e.target.value)}
+                  className="detail-input-date"
+                />
+              </div>
+            )}
+          </div>
           <button className="detail-save-btn" onClick={addDetail}>保存</button>
-          <button className="detail-cancel-btn" onClick={() => setAdding(false)}>取消</button>
+          <button className="detail-cancel-btn" onClick={() => { setAdding(false); setUseRange(false); setRangeEnd(''); }}>取消</button>
         </div>
       )}
     </div>

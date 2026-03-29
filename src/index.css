@@ -755,6 +755,59 @@ body {
   color: var(--on-surface-variant);
 }
 
+/* ===== Range Input ===== */
+.detail-range-row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-range-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+}
+
+.detail-range-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+
+.detail-range-dates {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--on-surface);
+}
+
+.detail-range-label {
+  font-weight: 600;
+  min-width: 40px;
+}
+
+.detail-input-date {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: var(--radius-lg);
+  background: var(--surface-container-low);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--on-surface);
+}
+
+.detail-input-date:focus {
+  outline: none;
+  background: var(--surface-container-lowest);
+  box-shadow: inset 0 0 0 1.5px rgba(15, 103, 132, 0.2);
+}
+
 /* ===== Clinic Calendar ===== */
 .clinic-calendar {
   padding-bottom: 16px;
