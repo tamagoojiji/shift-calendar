@@ -143,13 +143,17 @@ export default function MonthCalendar() {
           {detailCount > 0 && <span className="cal-badge">+{detailCount}</span>}
         </div>
         {holidayName && <div className="cal-holiday">{holidayName}</div>}
-        {day.isOff ? (
+        {day.isOff && !day.nightShift ? (
           <div className="cal-chip cal-chip-off">
             <span className="cal-chip-text">休み</span>
           </div>
         ) : (
           <>
-            {day.dayShift ? (
+            {day.isOff ? (
+              <div className="cal-chip cal-chip-off">
+                <span className="cal-chip-text">休み</span>
+              </div>
+            ) : day.dayShift ? (
               <div className={`cal-chip cal-chip-${day.dayShift}`}>
                 <span className="cal-chip-text">{SHIFT_LABELS[day.dayShift]}</span>
               </div>
