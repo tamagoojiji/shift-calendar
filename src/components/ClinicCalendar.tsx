@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { ClinicShiftPattern, Staff } from '../types';
 import { getDaysInMonth, formatDate, getToday, WEEKDAY_LABELS, getPrevDate } from '../utils/dateUtils';
-import { loadClinicData, saveClinicData, loadStaff, saveStaff, loadShifts } from '../utils/storage';
+import { loadClinicData, saveClinicData, loadStaff, saveStaff, loadShifts, getDay, saveDay } from '../utils/storage';
 import { generateClinicPDF } from '../utils/pdfExport';
 
 const PATTERN_LABELS: Record<string, string> = {
@@ -109,6 +109,29 @@ export default function ClinicCalendar() {
     saveStaff(updated);
   };
 
+  // 四ツ橋のシフトをカレンダーに反映
+  const syncToCalendar = () => {
+    let count = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = formatDate(year, month, d);
+      const pattern = getPattern(dateStr, 'yotsuhashi');
+      const day = getDay(dateStr);
+
+      if (pattern === 'off') {
+        day.isOff = true;
+        day.dayShift = null;
+      } else if (pattern && pattern !== null) {
+        day.dayShift = 'eye';
+        day.isOff = false;
+      } else {
+        continue;
+      }
+      saveDay(day);
+      count++;
+    }
+    alert(`${year}年${month}月の${count}日分をカレンダーに反映しました`);
+  };
+
   const [exporting, setExporting] = useState(false);
 
   const handleExportPDF = async () => {
@@ -148,6 +171,7 @@ export default function ClinicCalendar() {
       </div>
 
       <div className="clinic-actions">
+        <button className="clinic-pdf-btn" onClick={syncToCalendar}>カレンダーに反映</button>
         <button className="clinic-pdf-btn" onClick={handleExportPDF} disabled={exporting}>
           {exporting ? '出力中...' : 'PDF出力'}
         </button>
