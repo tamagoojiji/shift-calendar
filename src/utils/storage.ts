@@ -98,6 +98,23 @@ export function saveStaff(staff: Staff[]): void {
   syncToFirestore('staff', staff);
 }
 
+// 共通の表示月（全タブで共有）
+export function getSavedMonth(): { year: number; month: number } {
+  try {
+    const saved = localStorage.getItem('shift_current_month');
+    if (saved) {
+      const { year, month } = JSON.parse(saved);
+      if (year && month) return { year, month };
+    }
+  } catch {}
+  const d = new Date();
+  return { year: d.getFullYear(), month: d.getMonth() + 1 };
+}
+
+export function saveCurrentMonth(year: number, month: number): void {
+  localStorage.setItem('shift_current_month', JSON.stringify({ year, month }));
+}
+
 // Firestoreからローカルにデータ復元
 export function restoreToLocal(shifts: Record<string, DayData>, clinic: Record<string, ClinicMonthData>, staff: Staff[]) {
   if (Object.keys(shifts).length > 0) {

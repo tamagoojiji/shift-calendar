@@ -2,25 +2,13 @@ import { useState, useMemo, useRef, useCallback } from 'react';
 import type { DayData, DayShiftType, NightShiftPlace, NightShiftTime } from '../types';
 import { SHIFT_COLORS, SHIFT_LABELS } from '../types';
 import { getDaysInMonth, getFirstDayOfWeek, formatDate, getToday, WEEKDAY_LABELS } from '../utils/dateUtils';
-import { getDay, saveDay, loadShifts } from '../utils/storage';
+import { getDay, saveDay, loadShifts, getSavedMonth, saveCurrentMonth } from '../utils/storage';
 import { getHolidays } from '../utils/holidays';
 import DetailPanel from './DetailPanel';
 
-function getSavedMonth(key: string): { year: number; month: number } {
-  const today = getToday();
-  try {
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      const { year, month } = JSON.parse(saved);
-      if (year && month) return { year, month };
-    }
-  } catch {}
-  return { year: Number(today.slice(0, 4)), month: Number(today.slice(5, 7)) };
-}
-
 export default function MonthCalendar() {
   const today = getToday();
-  const saved = getSavedMonth('shift_last_month');
+  const saved = getSavedMonth();
   const [year, setYear] = useState(saved.year);
   const [month, setMonth] = useState(saved.month);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -37,15 +25,11 @@ export default function MonthCalendar() {
 
   const refresh = () => setRefreshKey(k => k + 1);
 
-  const saveMonth = (y: number, m: number) => {
-    localStorage.setItem('shift_last_month', JSON.stringify({ year: y, month: m }));
-  };
-
   const prevMonth = () => {
     const newY = month === 1 ? year - 1 : year;
     const newM = month === 1 ? 12 : month - 1;
     setYear(newY); setMonth(newM);
-    saveMonth(newY, newM);
+    saveCurrentMonth(newY, newM);
     setSelectedDate(null);
     setEditingDate(null);
   };
@@ -54,7 +38,7 @@ export default function MonthCalendar() {
     const newY = month === 12 ? year + 1 : year;
     const newM = month === 12 ? 1 : month + 1;
     setYear(newY); setMonth(newM);
-    saveMonth(newY, newM);
+    saveCurrentMonth(newY, newM);
     setSelectedDate(null);
     setEditingDate(null);
   };

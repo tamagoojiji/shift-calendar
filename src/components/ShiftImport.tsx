@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import type { NightShiftPlace, NightShiftTime } from '../types';
-import { saveDay, getDay } from '../utils/storage';
+import { saveDay, getDay, getSavedMonth, saveCurrentMonth } from '../utils/storage';
 import { getDaysInMonth, formatDate, getToday, WEEKDAY_LABELS } from '../utils/dateUtils';
 import { analyzeShiftImage, analyzeEventImage, getGeminiApiKey } from '../utils/gemini';
 
@@ -59,9 +59,9 @@ export default function ShiftImport() {
 // 日勤一括入力コンポーネント
 // ========================================
 function DayShiftInput() {
-  const today = getToday();
-  const [year, setYear] = useState(Number(today.slice(0, 4)));
-  const [month, setMonth] = useState(Number(today.slice(5, 7)));
+  const saved = getSavedMonth();
+  const [year, setYear] = useState(saved.year);
+  const [month, setMonth] = useState(saved.month);
   const daysInMonth = getDaysInMonth(year, month);
 
   // プリセット生成: 月火水金=全日、木=午前、土=午前、日=休み
@@ -80,10 +80,10 @@ function DayShiftInput() {
 
   const [rows, setRows] = useState<DayShiftRow[]>(generatePreset());
 
-  // 月変更時にプリセット再生成
   const handleMonthChange = (newYear: number, newMonth: number) => {
     setYear(newYear);
     setMonth(newMonth);
+    saveCurrentMonth(newYear, newMonth);
     const days = getDaysInMonth(newYear, newMonth);
     setRows(Array.from({ length: days }, (_, i) => {
       const d = i + 1;
@@ -206,12 +206,12 @@ function DayShiftInput() {
 // 夜勤読込コンポーネント（画像OCR + 手動修正）
 // ========================================
 function NightShiftImport() {
-  const today = getToday();
+  const savedM = getSavedMonth();
   const [loading, setLoading] = useState(false);
   const [editShifts, setEditShifts] = useState<ParsedShift[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [shiftYear, setShiftYear] = useState(Number(today.slice(0, 4)));
-  const [shiftMonth, setShiftMonth] = useState(Number(today.slice(5, 7)));
+  const [shiftYear, setShiftYear] = useState(savedM.year);
+  const [shiftMonth, setShiftMonth] = useState(savedM.month);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -296,9 +296,9 @@ function NightShiftImport() {
 
       {/* 月選択 */}
       <div className="import-month-nav">
-        <button onClick={() => { if (shiftMonth === 1) { setShiftYear(y => y - 1); setShiftMonth(12); } else setShiftMonth(m => m - 1); }}>◀</button>
+        <button onClick={() => { const ny = shiftMonth === 1 ? shiftYear - 1 : shiftYear; const nm = shiftMonth === 1 ? 12 : shiftMonth - 1; setShiftYear(ny); setShiftMonth(nm); saveCurrentMonth(ny, nm); }}>◀</button>
         <span>{shiftYear}年 {shiftMonth}月</span>
-        <button onClick={() => { if (shiftMonth === 12) { setShiftYear(y => y + 1); setShiftMonth(1); } else setShiftMonth(m => m + 1); }}>▶</button>
+        <button onClick={() => { const ny = shiftMonth === 12 ? shiftYear + 1 : shiftYear; const nm = shiftMonth === 12 ? 1 : shiftMonth + 1; setShiftYear(ny); setShiftMonth(nm); saveCurrentMonth(ny, nm); }}>▶</button>
       </div>
 
       {/* 入力テーブル（常に表示） */}

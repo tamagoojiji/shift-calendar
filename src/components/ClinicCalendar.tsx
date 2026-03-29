@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { ClinicShiftPattern, Staff } from '../types';
-import { getDaysInMonth, formatDate, getToday, WEEKDAY_LABELS, getPrevDate } from '../utils/dateUtils';
-import { loadClinicData, saveClinicData, loadStaff, saveStaff, loadShifts, getDay, saveDay } from '../utils/storage';
+import { getDaysInMonth, formatDate, WEEKDAY_LABELS, getPrevDate } from '../utils/dateUtils';
+import { loadClinicData, saveClinicData, loadStaff, saveStaff, loadShifts, getDay, saveDay, getSavedMonth, saveCurrentMonth } from '../utils/storage';
 import { generateClinicPDF } from '../utils/pdfExport';
 
 const PATTERN_LABELS: Record<string, string> = {
@@ -24,20 +24,8 @@ const PATTERN_COLORS: Record<string, string> = {
   off: '#9E9E9E',
 };
 
-function getSavedClinicMonth(): { year: number; month: number } {
-  const today = getToday();
-  try {
-    const saved = localStorage.getItem('shift_last_clinic_month');
-    if (saved) {
-      const { year, month } = JSON.parse(saved);
-      if (year && month) return { year, month };
-    }
-  } catch {}
-  return { year: Number(today.slice(0, 4)), month: Number(today.slice(5, 7)) };
-}
-
 export default function ClinicCalendar() {
-  const saved = getSavedClinicMonth();
+  const saved = getSavedMonth();
   const [year, setYear] = useState(saved.year);
   const [month, setMonth] = useState(saved.month);
   const [staffList, setStaffList] = useState<Staff[]>(loadStaff());
@@ -53,22 +41,18 @@ export default function ClinicCalendar() {
 
   const refresh = () => setRefreshKey(k => k + 1);
 
-  const saveClinicMonth = (y: number, m: number) => {
-    localStorage.setItem('shift_last_clinic_month', JSON.stringify({ year: y, month: m }));
-  };
-
   const prevMonth = () => {
     const newY = month === 1 ? year - 1 : year;
     const newM = month === 1 ? 12 : month - 1;
     setYear(newY); setMonth(newM);
-    saveClinicMonth(newY, newM);
+    saveCurrentMonth(newY, newM);
   };
 
   const nextMonth = () => {
     const newY = month === 12 ? year + 1 : year;
     const newM = month === 12 ? 1 : month + 1;
     setYear(newY); setMonth(newM);
-    saveClinicMonth(newY, newM);
+    saveCurrentMonth(newY, newM);
   };
 
   const setPattern = (date: string, staffId: string, pattern: ClinicShiftPattern) => {
