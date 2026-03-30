@@ -98,6 +98,36 @@ export function saveStaff(staff: Staff[]): void {
   syncToFirestore('staff', staff);
 }
 
+// 削除履歴（直近10件）
+export interface DeletedEvent {
+  item: DetailItem;
+  date: string;
+  source: 'personal' | 'park';
+  deletedAt: number;
+}
+
+export function loadDeletedEvents(): DeletedEvent[] {
+  try {
+    const raw = localStorage.getItem('deleted_events');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addDeletedEvent(item: DetailItem, date: string, source: 'personal' | 'park'): void {
+  const list = loadDeletedEvents();
+  list.unshift({ item, date, source, deletedAt: Date.now() });
+  // 直近10件だけ保持
+  localStorage.setItem('deleted_events', JSON.stringify(list.slice(0, 10)));
+}
+
+export function removeDeletedEvent(index: number): void {
+  const list = loadDeletedEvents();
+  list.splice(index, 1);
+  localStorage.setItem('deleted_events', JSON.stringify(list));
+}
+
 // パークイベント（個人イベントとは独立）
 export function loadParkEvents(): Record<string, DetailItem[]> {
   try {

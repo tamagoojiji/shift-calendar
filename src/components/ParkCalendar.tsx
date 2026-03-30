@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { getDaysInMonth, formatDate, WEEKDAY_LABELS } from '../utils/dateUtils';
-import { getSavedMonth, saveCurrentMonth, getParkDayEvents, saveParkDayEvents, loadParkEvents } from '../utils/storage';
+import { getSavedMonth, saveCurrentMonth, getParkDayEvents, saveParkDayEvents, loadParkEvents, addDeletedEvent } from '../utils/storage';
 import { getHolidays } from '../utils/holidays';
 import { useSwipe } from '../hooks/useSwipe';
 import { parkHours } from '../data/hours';
@@ -70,7 +70,10 @@ export default function ParkCalendar() {
   // イベント削除
   const removeEvent = useCallback((id: string) => {
     if (!selectedDate) return;
+    if (!confirm('削除しますか？')) return;
     const events = getParkDayEvents(selectedDate);
+    const target = events.find(d => d.id === id);
+    if (target) addDeletedEvent(target, selectedDate, 'park');
     saveParkDayEvents(selectedDate, events.filter(d => d.id !== id));
     setEditingItemId(null);
     refreshData();

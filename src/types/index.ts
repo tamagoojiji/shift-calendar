@@ -18,6 +18,7 @@ export interface DetailItem {
   id: string;
   time: string; // HH:MM
   content: string;
+  url?: string;
 }
 
 // 眼科スタッフ
@@ -41,13 +42,13 @@ export interface ClinicMonthData {
 
 // 施設の色設定
 export const SHIFT_COLORS: Record<string, string> = {
-  eye: '#E91E63',      // ピンク（眼科）
-  facility: '#4CAF50', // 緑（施設）
-  katano: '#9C27B0',   // 紫（交野）
-  hirakata: '#2196F3', // 青（枚方）
-  kadoma: '#FF9800',   // オレンジ（門真）
-  moriguchi: '#F44336', // 赤（守口）
-  off: '#9E9E9E',      // グレー（休み）
+  eye: '#4CAF50',      // 緑（眼科）
+  facility: '#FB8C00', // オレンジ（施設）
+  katano: '#1565C0',   // 青（交野）
+  hirakata: '#00838F', // ティール（枚方）
+  kadoma: '#5E35B1',   // 紫（門真）
+  moriguchi: '#3949AB', // インディゴ（守口）
+  off: '#E57373',      // ピンク（休み）
 };
 
 // 施設の表示名

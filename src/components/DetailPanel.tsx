@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import type { DayData, DetailItem } from '../types';
 import { SHIFT_COLORS, SHIFT_LABELS } from '../types';
-import { saveDay, getDay } from '../utils/storage';
+import { saveDay, getDay, addDeletedEvent } from '../utils/storage';
 import { WEEKDAY_LABELS } from '../utils/dateUtils';
 import { analyzeEventImage, getGeminiApiKey } from '../utils/gemini';
 import { setReminder, removeReminder, hasReminder, getReminder, requestNotificationPermission, TIMING_LABELS } from '../utils/reminder';
@@ -19,12 +19,14 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
   const [showAll, setShowAll] = useState(false);
   const [newTime, setNewTime] = useState('');
   const [newContent, setNewContent] = useState('');
+  const [newUrl, setNewUrl] = useState('');
   const [useRange, setUseRange] = useState(false);
   const [rangeEnd, setRangeEnd] = useState('');
   const [repeatType, setRepeatType] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editTime, setEditTime] = useState('');
   const [editContent, setEditContent] = useState('');
+  const [editUrl, setEditUrl] = useState('');
   const [editUseRange, setEditUseRange] = useState(false);
   const [editRangeEnd, setEditRangeEnd] = useState('');
   const [editRepeatType, setEditRepeatType] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
@@ -57,6 +59,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
           id: Date.now().toString() + '_' + count,
           time,
           content,
+          ...(newUrl.trim() && { url: newUrl.trim() }),
         };
         targetDay.details = [...(targetDay.details || []), item];
         saveDay(targetDay);
@@ -94,6 +97,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
         id: Date.now().toString(),
         time,
         content,
+        ...(newUrl.trim() && { url: newUrl.trim() }),
       };
       day.details = [...(day.details || []), item];
       saveDay(day);
@@ -102,6 +106,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
     setAdding(false);
     setNewTime('');
     setNewContent('');
+    setNewUrl('');
     setUseRange(false);
     setRangeEnd('');
     setRepeatType('daily');
@@ -109,6 +114,9 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
   };
 
   const removeDetail = (id: string) => {
+    if (!confirm('削除しますか？')) return;
+    const target = (day.details || []).find(d => d.id === id);
+    if (target) addDeletedEvent(target, dateStr, 'personal');
     day.details = (day.details || []).filter(d => d.id !== id);
     saveDay(day);
     onUpdate();
@@ -118,6 +126,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
     setEditingItemId(item.id);
     setEditTime(item.time);
     setEditContent(item.content);
+    setEditUrl(item.url || '');
     setEditUseRange(false);
     setEditRangeEnd('');
     setEditRepeatType('daily');
@@ -129,8 +138,9 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
     const time = editTime;
 
     // 現在の日のイベントを更新
+    const url = editUrl.trim() || undefined;
     day.details = (day.details || []).map(d =>
-      d.id === editingItemId ? { ...d, time, content } : d
+      d.id === editingItemId ? { ...d, time, content, url } : d
     );
     saveDay(day);
 
@@ -147,6 +157,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
           id: Date.now().toString() + '_e' + count,
           time,
           content,
+          ...(url && { url }),
         };
         targetDay.details = [...(targetDay.details || []), item];
         saveDay(targetDay);
@@ -306,6 +317,13 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
               onKeyDown={e => { if (e.key === 'Enter' && !composingRef.current) saveEditDetail(); }}
               autoFocus
             />
+            <input
+              type="url"
+              placeholder="URL（任意）"
+              value={editUrl}
+              onChange={e => setEditUrl(e.target.value)}
+              className="detail-input-url"
+            />
             <div className="detail-range-row">
               <label className="detail-range-toggle">
                 <input
@@ -360,6 +378,11 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
                 </button>
               )}
             </div>
+            {item.url && (
+              <a className="detail-item-url" href={item.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                🔗 {item.url.replace(/^https?:\/\//, '').slice(0, 40)}{item.url.replace(/^https?:\/\//, '').length > 40 ? '...' : ''}
+              </a>
+            )}
             {reminderItemId === item.id && item.time && (
               <ReminderTimingPicker
                 eventId={item.id}
@@ -397,6 +420,13 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
             onCompositionStart={handleCompositionStart}
             onCompositionEnd={handleCompositionEnd}
             onKeyDown={e => { if (e.key === 'Enter' && !composingRef.current) addDetail(); }}
+          />
+          <input
+            type="url"
+            placeholder="URL（任意）"
+            value={newUrl}
+            onChange={e => setNewUrl(e.target.value)}
+            className="detail-input-url"
           />
           <div className="detail-range-row">
             <label className="detail-range-toggle">

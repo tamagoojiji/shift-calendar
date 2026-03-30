@@ -2,11 +2,28 @@ import { useState } from 'react';
 import { SHIFT_COLORS } from '../types';
 import { logout, loginWithGoogle, auth } from '../utils/firebase';
 import { saveSettingsToFirestore } from '../utils/firebase';
+import { loadDeletedEvents, removeDeletedEvent, getDay, saveDay, getParkDayEvents, saveParkDayEvents } from '../utils/storage';
+import type { DeletedEvent } from '../utils/storage';
 
 export default function Settings() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('shift_gemini_key') || '');
   const [saved, setSaved] = useState(false);
+  const [deletedEvents, setDeletedEvents] = useState<DeletedEvent[]>(loadDeletedEvents);
   const user = auth.currentUser;
+
+  const restoreEvent = (index: number) => {
+    const evt = deletedEvents[index];
+    if (evt.source === 'personal') {
+      const day = getDay(evt.date);
+      day.details = [...(day.details || []), evt.item];
+      saveDay(day);
+    } else {
+      const events = getParkDayEvents(evt.date);
+      saveParkDayEvents(evt.date, [...events, evt.item]);
+    }
+    removeDeletedEvent(index);
+    setDeletedEvents(loadDeletedEvents());
+  };
 
   const handleSave = async () => {
     localStorage.setItem('shift_gemini_key', apiKey.trim());
@@ -20,14 +37,6 @@ export default function Settings() {
     }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-  };
-
-  const handleClearData = () => {
-    if (confirm('全データを削除しますか？この操作は取り消せません。')) {
-      localStorage.removeItem('shift_calendar_data');
-      localStorage.removeItem('shift_clinic_data');
-      alert('データを削除しました');
-    }
   };
 
   const handleLogout = async () => {
@@ -104,13 +113,27 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* データ管理 */}
+      {/* 削除済みイベント復元 */}
       <div className="settings-section">
-        <h3>データ管理</h3>
-        <button className="settings-danger-btn" onClick={handleClearData}>
-          全データ削除
-        </button>
+        <h3>削除済みイベント（直近10件）</h3>
+        {deletedEvents.length === 0 ? (
+          <p className="settings-desc">削除済みイベントはありません</p>
+        ) : (
+          <div className="deleted-events-list">
+            {deletedEvents.map((evt, i) => (
+              <div key={i} className="deleted-event-item">
+                <div className="deleted-event-info">
+                  <span className="deleted-event-date">{evt.date}</span>
+                  <span className="deleted-event-source">{evt.source === 'personal' ? '個人' : 'パーク'}</span>
+                  <span className="deleted-event-content">{evt.item.time ? `${evt.item.time} ` : ''}{evt.item.content}</span>
+                </div>
+                <button className="deleted-event-restore" onClick={() => restoreEvent(i)}>復元</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
     </div>
   );
 }
