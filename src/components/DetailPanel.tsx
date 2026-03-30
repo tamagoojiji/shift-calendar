@@ -285,8 +285,8 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
         </div>
       )}
 
-      {/* 詳細一覧（タップで編集） */}
-      {sortedDetails.map(item => (
+      {/* 詳細一覧（タップで編集・最大2件表示） */}
+      {sortedDetails.slice(0, 2).map(item => (
         editingItemId === item.id ? (
           <div key={item.id} className="detail-add-form">
             <input
@@ -371,6 +371,9 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
           </div>
         )
       ))}
+      {sortedDetails.length > 2 && (
+        <div className="detail-more-count">他 {sortedDetails.length - 2}件</div>
+      )}
 
       {/* 追加フォーム */}
       {adding && (

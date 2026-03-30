@@ -352,7 +352,7 @@ body {
 }
 
 .cal-cell {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1 / 1.12;
   background: var(--surface-container-lowest);
   border-radius: 4px;
   padding: 3px;
@@ -732,6 +732,13 @@ body {
 
 .detail-shift-empty:active {
   background: var(--surface-container-high);
+}
+
+.detail-more-count {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  text-align: center;
+  padding: 4px 0;
 }
 
 .detail-item {
