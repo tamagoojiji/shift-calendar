@@ -1,4 +1,4 @@
-import type { DayData, ClinicMonthData, Staff } from '../types';
+import type { DayData, ClinicMonthData, Staff, DetailItem } from '../types';
 import { saveShiftsToFirestore, saveClinicToFirestore, saveStaffToFirestore, saveSettingsToFirestore } from './firebase';
 
 const STORAGE_KEYS = {
@@ -96,6 +96,31 @@ export function loadStaff(): Staff[] {
 export function saveStaff(staff: Staff[]): void {
   localStorage.setItem(STORAGE_KEYS.staff, JSON.stringify(staff));
   syncToFirestore('staff', staff);
+}
+
+// パークイベント（個人イベントとは独立）
+export function loadParkEvents(): Record<string, DetailItem[]> {
+  try {
+    const raw = localStorage.getItem('park_events_data');
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveParkEvents(data: Record<string, DetailItem[]>): void {
+  localStorage.setItem('park_events_data', JSON.stringify(data));
+}
+
+export function getParkDayEvents(date: string): DetailItem[] {
+  const all = loadParkEvents();
+  return all[date] || [];
+}
+
+export function saveParkDayEvents(date: string, events: DetailItem[]): void {
+  const all = loadParkEvents();
+  all[date] = events;
+  saveParkEvents(all);
 }
 
 // 共通の表示月（全タブで共有）

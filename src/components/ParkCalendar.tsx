@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { getDaysInMonth, formatDate, WEEKDAY_LABELS } from '../utils/dateUtils';
-import { getSavedMonth, saveCurrentMonth, loadShifts, getDay, saveDay } from '../utils/storage';
+import { getSavedMonth, saveCurrentMonth, getParkDayEvents, saveParkDayEvents, loadParkEvents } from '../utils/storage';
 import { getHolidays } from '../utils/holidays';
 import { useSwipe } from '../hooks/useSwipe';
 import { parkHours } from '../data/hours';
@@ -41,10 +41,10 @@ export default function ParkCalendar() {
     fetchPrivateEvents().then(setPrivateEvents);
   }, []);
 
-  // イベントデータ読込（refreshKeyで再読込トリガー）
-  const allShifts = useMemo(() => {
-    void refreshKey; // dependency
-    return loadShifts();
+  // パークイベントデータ読込（refreshKeyで再読込トリガー）
+  const allParkEvents = useMemo(() => {
+    void refreshKey;
+    return loadParkEvents();
   }, [refreshKey]);
 
   const refreshData = useCallback(() => {
@@ -54,14 +54,13 @@ export default function ParkCalendar() {
   // イベント追加
   const addEvent = useCallback(() => {
     if (!selectedDate || !newContent.trim()) return;
-    const day = getDay(selectedDate);
+    const events = getParkDayEvents(selectedDate);
     const item: DetailItem = {
       id: Date.now().toString(),
       time: newTime,
       content: newContent.trim(),
     };
-    day.details = [...(day.details || []), item];
-    saveDay(day);
+    saveParkDayEvents(selectedDate, [...events, item]);
     setAdding(false);
     setNewTime('');
     setNewContent('');
@@ -71,9 +70,8 @@ export default function ParkCalendar() {
   // イベント削除
   const removeEvent = useCallback((id: string) => {
     if (!selectedDate) return;
-    const day = getDay(selectedDate);
-    day.details = (day.details || []).filter(d => d.id !== id);
-    saveDay(day);
+    const events = getParkDayEvents(selectedDate);
+    saveParkDayEvents(selectedDate, events.filter(d => d.id !== id));
     setEditingItemId(null);
     refreshData();
   }, [selectedDate, refreshData]);
@@ -81,11 +79,10 @@ export default function ParkCalendar() {
   // イベント編集保存
   const saveEditEvent = useCallback(() => {
     if (!selectedDate || !editingItemId || !editContent.trim()) return;
-    const day = getDay(selectedDate);
-    day.details = (day.details || []).map(d =>
+    const events = getParkDayEvents(selectedDate);
+    saveParkDayEvents(selectedDate, events.map(d =>
       d.id === editingItemId ? { ...d, time: editTime, content: editContent.trim() } : d
-    );
-    saveDay(day);
+    ));
     setEditingItemId(null);
     refreshData();
   }, [selectedDate, editingItemId, editTime, editContent, refreshData]);
@@ -142,8 +139,8 @@ export default function ParkCalendar() {
         return { text: '貸切', color: '#9C27B0' };
       }
       case 'events': {
-        const dayData = allShifts[dateStr];
-        const count = dayData?.details?.length || 0;
+        const parkEvts = allParkEvents[dateStr] || [];
+        const count = parkEvts.length;
         if (count === 0) return null;
         return { text: `${count}件`, color: '#FF5722' };
       }
@@ -274,8 +271,8 @@ export default function ParkCalendar() {
 
       {/* イベント詳細パネル */}
       {selectedDate && activeTab === 'events' && (() => {
-        const dayData = allShifts[selectedDate];
-        const details = [...(dayData?.details || [])].sort((a, b) => a.time.localeCompare(b.time));
+        const parkEvents = allParkEvents[selectedDate] || [];
+        const details = [...parkEvents].sort((a, b) => a.time.localeCompare(b.time));
         return (
           <div className="park-detail">
             <div className="park-detail-header">
