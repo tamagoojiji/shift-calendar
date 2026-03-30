@@ -16,6 +16,7 @@ interface Props {
 
 export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Props) {
   const [adding, setAdding] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const [newTime, setNewTime] = useState('');
   const [newContent, setNewContent] = useState('');
   const [useRange, setUseRange] = useState(false);
@@ -286,7 +287,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
       )}
 
       {/* 詳細一覧（タップで編集・最大2件表示） */}
-      {sortedDetails.slice(0, 2).map(item => (
+      {(showAll ? sortedDetails : sortedDetails.slice(0, 3)).map(item => (
         editingItemId === item.id ? (
           <div key={item.id} className="detail-add-form">
             <input
@@ -371,8 +372,11 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift }: Pro
           </div>
         )
       ))}
-      {sortedDetails.length > 2 && (
-        <div className="detail-more-count">他 {sortedDetails.length - 2}件</div>
+      {!showAll && sortedDetails.length > 3 && (
+        <div className="detail-more-count" onClick={() => setShowAll(true)}>他 {sortedDetails.length - 3}件 ▼</div>
+      )}
+      {showAll && sortedDetails.length > 3 && (
+        <div className="detail-more-count" onClick={() => setShowAll(false)}>閉じる ▲</div>
       )}
 
       {/* 追加フォーム */}
