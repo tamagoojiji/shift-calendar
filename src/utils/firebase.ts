@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, type User } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence, type User } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import type { DayData, ClinicMonthData, Staff } from '../types';
 
@@ -18,6 +18,7 @@ export const db = getFirestore(app);
 
 // ===== 認証 =====
 export async function loginWithGoogle(): Promise<User> {
+  await setPersistence(auth, browserLocalPersistence);
   const provider = new GoogleAuthProvider();
   const result = await signInWithPopup(auth, provider);
   return result.user;
