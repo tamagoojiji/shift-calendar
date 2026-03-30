@@ -3,6 +3,7 @@ import type { ClinicShiftPattern, Staff } from '../types';
 import { getDaysInMonth, formatDate, WEEKDAY_LABELS, getPrevDate } from '../utils/dateUtils';
 import { loadClinicData, saveClinicData, loadStaff, saveStaff, loadShifts, getDay, saveDay, getSavedMonth, saveCurrentMonth } from '../utils/storage';
 import { generateClinicPDF } from '../utils/pdfExport';
+import { getHolidays } from '../utils/holidays';
 
 const PATTERN_LABELS: Record<string, string> = {
   am: '午前',
@@ -37,6 +38,7 @@ export default function ClinicCalendar() {
   const clinicData = useMemo(() => loadClinicData(), [refreshKey]);
   const allShifts = useMemo(() => loadShifts(), [refreshKey]);
   const daysInMonth = getDaysInMonth(year, month);
+  const holidays = useMemo(() => getHolidays(year), [year]);
   const monthKey = `${year}-${String(month).padStart(2, '0')}`;
 
   const refresh = () => setRefreshKey(k => k + 1);
@@ -61,6 +63,20 @@ export default function ClinicCalendar() {
     if (!data[monthKey][date]) data[monthKey][date] = {};
     data[monthKey][date][staffId] = pattern;
     saveClinicData(data);
+
+    // yotsuhashiの変更はカレンダーに自動同期
+    if (staffId === 'yotsuhashi') {
+      const day = getDay(date);
+      if (pattern === 'off') {
+        day.isOff = true;
+        day.dayShift = null;
+      } else if (pattern) {
+        day.dayShift = 'eye';
+        day.isOff = false;
+      }
+      saveDay(day);
+    }
+
     setEditingCell(null);
     refresh();
   };
@@ -72,8 +88,8 @@ export default function ClinicCalendar() {
     const prevDay = allShifts[prevDateStr];
     const hasNightShiftPrev = prevDay?.nightShift != null;
 
-    // 日曜は休み
-    if (dow === 0) return 'off';
+    // 日曜・祝日は休み
+    if (dow === 0 || holidays.has(dateStr)) return 'off';
 
     // マイカレンダーで眼科が入っていない日は休み
     const thisDay = allShifts[dateStr];
@@ -213,11 +229,17 @@ export default function ClinicCalendar() {
               <th className="clinic-th-name">名前</th>
               {Array.from({ length: daysInMonth }, (_, i) => {
                 const d = i + 1;
+                const dateStr = formatDate(year, month, d);
                 const dow = new Date(year, month - 1, d).getDay();
+                const holidayName = holidays.get(dateStr);
+                const isHoliday = !!holidayName;
+                const isRed = dow === 0 || isHoliday;
+                const isBlue = dow === 4 || dow === 6; // 木・土
                 return (
-                  <th key={d} className={`clinic-th-day ${dow === 0 ? 'cal-sun' : dow === 6 ? 'cal-sat' : ''}`}>
+                  <th key={d} className={`clinic-th-day ${isRed ? 'clinic-th-holiday' : isBlue ? 'clinic-th-blue' : ''}`}>
                     <div>{d}</div>
                     <div className="clinic-th-dow">{WEEKDAY_LABELS[dow]}</div>
+                    {holidayName && <div className="clinic-th-holiday-name">{holidayName}</div>}
                   </th>
                 );
               })}

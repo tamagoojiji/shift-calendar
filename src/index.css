@@ -423,11 +423,14 @@ body {
 .cal-sat .cal-date { color: #41556b; }
 
 .cal-holiday {
-  font-size: 6px;
+  font-size: 5px;
   color: var(--error);
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .cal-badge {
@@ -1112,6 +1115,29 @@ body {
   font-size: 11px;
   font-weight: 400;
   color: var(--on-surface-variant);
+}
+
+.clinic-th-holiday {
+  color: var(--error);
+}
+
+.clinic-th-holiday .clinic-th-dow {
+  color: var(--error);
+}
+
+.clinic-th-blue {
+  color: #90CAF9;
+}
+
+.clinic-th-blue .clinic-th-dow {
+  color: #90CAF9;
+}
+
+.clinic-th-holiday-name {
+  font-size: 5px;
+  color: var(--error);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .clinic-td-name {

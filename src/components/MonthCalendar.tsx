@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useCallback } from 'react';
 import type { DayData, DayShiftType, NightShiftPlace, NightShiftTime } from '../types';
 import { SHIFT_COLORS, SHIFT_LABELS } from '../types';
 import { getDaysInMonth, getFirstDayOfWeek, formatDate, getToday, WEEKDAY_LABELS } from '../utils/dateUtils';
-import { getDay, saveDay, loadShifts, getSavedMonth, saveCurrentMonth } from '../utils/storage';
+import { getDay, saveDay, loadShifts, getSavedMonth, saveCurrentMonth, loadClinicData, saveClinicData } from '../utils/storage';
 import { getHolidays } from '../utils/holidays';
 import DetailPanel from './DetailPanel';
 import { useSwipe } from '../hooks/useSwipe';
@@ -98,6 +98,28 @@ export default function MonthCalendar() {
     }
   }, []);
 
+  // 通常カレンダー → 眼科カレンダーへの自動同期
+  const syncToClinic = (dateStr: string, day: DayData) => {
+    const monthKey = dateStr.slice(0, 7);
+    const data = loadClinicData();
+    if (!data[monthKey]) data[monthKey] = {};
+    if (!data[monthKey][dateStr]) data[monthKey][dateStr] = {};
+
+    if (day.isOff) {
+      data[monthKey][dateStr]['yotsuhashi'] = 'off';
+    } else if (day.dayShift === 'eye') {
+      // 眼科の場合、既にクリニック側にパターンがあればそのまま、なければ'am_pm'をセット
+      const current = data[monthKey][dateStr]['yotsuhashi'];
+      if (!current || current === 'off') {
+        data[monthKey][dateStr]['yotsuhashi'] = 'am_pm';
+      }
+    } else {
+      // 眼科以外の日勤 or 日勤なし → クリニック側をクリア
+      data[monthKey][dateStr]['yotsuhashi'] = null;
+    }
+    saveClinicData(data);
+  };
+
   const handleShiftSelect = (dateStr: string, field: 'dayShift' | 'nightShift' | 'nightTime' | 'isOff', value: unknown) => {
     const day = getDay(dateStr);
     if (field === 'isOff') {
@@ -117,6 +139,10 @@ export default function MonthCalendar() {
       day.nightTime = value as NightShiftTime;
     }
     saveDay(day);
+    // 日勤・休みの変更は眼科カレンダーに自動同期
+    if (field === 'dayShift' || field === 'isOff') {
+      syncToClinic(dateStr, day);
+    }
     refresh();
   };
 
@@ -158,9 +184,9 @@ export default function MonthCalendar() {
       >
         <div className="cal-date">
           {d}
+          {holidayName && <span className="cal-holiday">{holidayName}</span>}
           {detailCount > 0 && <span className="cal-badge">+{detailCount}</span>}
         </div>
-        {holidayName && <div className="cal-holiday">{holidayName}</div>}
         {day.isOff && !day.nightShift ? (
           <div className="cal-chip cal-chip-off">
             <span className="cal-chip-text">休み</span>
