@@ -1176,6 +1176,21 @@ body {
   font-size: 14px;
 }
 
+/* スタッフ別カラー */
+.clinic-row-yotsuhashi .clinic-td-shift {
+  background: rgba(187, 222, 251, 0.3);
+}
+.clinic-name-yotsuhashi {
+  background: rgba(187, 222, 251, 0.5) !important;
+}
+
+.clinic-row-tamaki .clinic-td-shift {
+  background: rgba(255, 205, 210, 0.3);
+}
+.clinic-name-tamaki {
+  background: rgba(255, 205, 210, 0.5) !important;
+}
+
 .clinic-td-shift {
   text-align: center;
   padding: 4px 2px;
@@ -1196,6 +1211,24 @@ body {
   font-weight: 600;
   white-space: pre-line;
   line-height: 1.2;
+}
+
+.clinic-block {
+  border-radius: 3px;
+  padding: 3px 2px;
+  text-align: center;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.clinic-block-line1 {
+  font-size: 13px;
+}
+
+.clinic-block-line2 {
+  font-size: 9px;
+  opacity: 0.8;
+  margin-top: 1px;
 }
 
 .clinic-pattern-picker {

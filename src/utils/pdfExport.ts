@@ -23,10 +23,21 @@ const PATTERN_COLORS: Record<string, string> = {
   off: '#9E9E9E',
 };
 
+const BLOCK_BG: Record<string, string> = {
+  am: '#FCE4EC',
+  pm: '#FFF3E0',
+  am_pm: '#FCE4EC',
+  am_ten: '#FCE4EC',
+  am_pm_ten: '#FCE4EC',
+  late: '#F3E5F5',
+  off: '#F5F5F5',
+};
+
+
 export async function generateClinicPDF(
   year: number,
   month: number,
-  rows: { name: string; patterns: (ClinicShiftPattern)[] }[]
+  rows: { id: string; name: string; patterns: (ClinicShiftPattern)[] }[]
 ) {
   const daysInMonth = rows[0]?.patterns.length || 30;
   const firstDow = getFirstDayOfWeek(year, month);
@@ -107,14 +118,29 @@ export async function generateClinicPDF(
         dateDiv.textContent = String(day);
         td.appendChild(dateDiv);
 
-        // 各スタッフのシフト
+        // 各スタッフのシフト（ブロック形式）
         rows.forEach(staff => {
           const pattern = staff.patterns[day - 1];
           if (pattern) {
             const shiftDiv = document.createElement('div');
+            let textColor = PATTERN_COLORS[pattern] || '#333';
+            let bgColor = BLOCK_BG[pattern] || '#f5f5f5';
+
+            if (staff.name === '四ツ橋') {
+              textColor = '#333';
+              bgColor = '#E3F2FD';
+            } else if (staff.name === '玉城') {
+              textColor = '#333';
+              bgColor = '#FCE4EC';
+            }
+
             shiftDiv.style.cssText = `
-              font-size: 10px; font-weight: 600; line-height: 1.4;
-              color: ${PATTERN_COLORS[pattern] || '#333'};
+              font-size: 9px; font-weight: 600; line-height: 1.3;
+              color: ${textColor};
+              background: ${bgColor};
+              border-radius: 2px;
+              padding: 2px 3px;
+              margin-top: 2px;
             `;
             shiftDiv.textContent = `${staff.name}: ${PATTERN_LABELS[pattern] || ''}`;
             td.appendChild(shiftDiv);
@@ -129,19 +155,6 @@ export async function generateClinicPDF(
   table.appendChild(tbody);
   container.appendChild(table);
 
-  // 凡例
-  const legend = document.createElement('div');
-  legend.style.cssText = 'margin-top: 8px; font-size: 10px; display: flex; gap: 12px; justify-content: center;';
-  Object.entries(PATTERN_LABELS).forEach(([key, label]) => {
-    const span = document.createElement('span');
-    span.style.cssText = 'display: flex; align-items: center; gap: 3px;';
-    const dot = document.createElement('span');
-    dot.style.cssText = `width: 8px; height: 8px; border-radius: 50%; background: ${PATTERN_COLORS[key]};`;
-    span.appendChild(dot);
-    span.appendChild(document.createTextNode(label));
-    legend.appendChild(span);
-  });
-  container.appendChild(legend);
 
   document.body.appendChild(container);
 

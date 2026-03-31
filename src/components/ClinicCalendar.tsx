@@ -25,6 +25,17 @@ const PATTERN_COLORS: Record<string, string> = {
   off: '#9E9E9E',
 };
 
+// 2段ブロック表示用
+const BLOCK_CONFIG: Record<string, { line1: string; line2?: string; bg: string; color: string }> = {
+  am:       { line1: '午前', bg: '#FCE4EC', color: '#E91E63' },
+  pm:       { line1: '午後', bg: '#FFF3E0', color: '#FF9800' },
+  am_pm:    { line1: '全日', bg: '#FCE4EC', color: '#E91E63' },
+  am_ten:   { line1: '午前', line2: '10時〜', bg: '#FCE4EC', color: '#E91E63' },
+  am_pm_ten:{ line1: '全日', line2: '10時〜', bg: '#FCE4EC', color: '#E91E63' },
+  late:     { line1: '11:30', bg: '#F3E5F5', color: '#9C27B0' },
+  off:      { line1: '休', bg: '#F5F5F5', color: '#9E9E9E' },
+};
+
 export default function ClinicCalendar() {
   const saved = getSavedMonth();
   const [year, setYear] = useState(saved.year);
@@ -157,7 +168,8 @@ export default function ClinicCalendar() {
   const handleExportPDF = async () => {
     setExporting(true);
     try {
-      const rows: { name: string; patterns: (ClinicShiftPattern)[] }[] = staffList.map(staff => ({
+      const rows: { id: string; name: string; patterns: (ClinicShiftPattern)[] }[] = staffList.map(staff => ({
+        id: staff.id,
         name: staff.name,
         patterns: Array.from({ length: daysInMonth }, (_, i) => {
           const dateStr = formatDate(year, month, i + 1);
@@ -247,27 +259,36 @@ export default function ClinicCalendar() {
           </thead>
           <tbody>
             {staffList.map(staff => (
-              <tr key={staff.id}>
-                <td className="clinic-td-name">{staff.name}</td>
+              <tr key={staff.id} style={{ background: staff.name === '四ツ橋' ? 'rgba(187,222,251,0.15)' : staff.name === '玉城' ? 'rgba(255,205,210,0.15)' : undefined }}>
+                <td className="clinic-td-name" style={{ background: staff.name === '四ツ橋' ? 'rgba(187,222,251,0.4)' : staff.name === '玉城' ? 'rgba(255,205,210,0.4)' : undefined }}>{staff.name}</td>
                 {Array.from({ length: daysInMonth }, (_, i) => {
                   const d = i + 1;
                   const dateStr = formatDate(year, month, d);
                   const pattern = getPattern(dateStr, staff.id);
                   const isEditing = editingCell?.date === dateStr && editingCell?.staffId === staff.id;
 
+                  const block = pattern ? BLOCK_CONFIG[pattern] : null;
+                  // スタッフ別カラー
+                  let blockBg = block?.bg;
+                  let blockColor = block?.color;
+                  if (block && staff.name === '四ツ橋') {
+                    blockBg = '#E3F2FD';
+                    blockColor = '#333';
+                  } else if (block && staff.name === '玉城') {
+                    blockBg = '#FCE4EC';
+                    blockColor = '#333';
+                  }
                   return (
                     <td
                       key={d}
                       className={`clinic-td-shift ${isEditing ? 'clinic-td-editing' : ''}`}
                       onClick={() => setEditingCell({ date: dateStr, staffId: staff.id })}
                     >
-                      {pattern && (
-                        <span
-                          className="clinic-pattern-label"
-                          style={{ color: PATTERN_COLORS[pattern] || '#333' }}
-                        >
-                          {PATTERN_LABELS[pattern] || ''}
-                        </span>
+                      {block && (
+                        <div className="clinic-block" style={{ background: blockBg, color: blockColor }}>
+                          <div className="clinic-block-line1">{block.line1}</div>
+                          {block.line2 && <div className="clinic-block-line2">{block.line2}</div>}
+                        </div>
                       )}
                     </td>
                   );
