@@ -1001,6 +1001,7 @@ body {
   font-family: var(--font-body);
   font-size: 16px;
   color: var(--on-surface);
+  box-sizing: border-box;
 }
 
 .detail-input-date:focus {
@@ -1057,6 +1058,7 @@ body {
 
 .event-add-date-time-row .event-add-field {
   flex: 1;
+  min-width: 0;
 }
 
 .event-add-field {
