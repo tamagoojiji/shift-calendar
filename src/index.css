@@ -1059,11 +1059,11 @@ body {
 .event-add-date-time-row .event-add-field {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
 }
 
 .event-add-date-time-row input {
   width: 100% !important;
+  max-width: 100%;
   box-sizing: border-box;
 }
 
