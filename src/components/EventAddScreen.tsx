@@ -15,7 +15,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
   const [content, setContent] = useState('');
   const [url, setUrl] = useState('');
   const [rangeEnd, setRangeEnd] = useState('');
-  const [repeatType, setRepeatType] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
+  const [repeatType, setRepeatType] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const imageRef = useRef<HTMLInputElement>(null);
@@ -29,7 +29,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
     const trimContent = content.trim();
     const trimUrl = url.trim() || undefined;
 
-    if (rangeEnd && rangeEnd >= date) {
+    if (repeatType !== 'none' && rangeEnd && rangeEnd >= date) {
       const start = new Date(date);
       const end = new Date(rangeEnd);
       let count = 0;
@@ -225,27 +225,29 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
         <div className="detail-range-row">
           <label className="event-add-label">期間指定</label>
           <div className="detail-repeat-btns">
-            {([['daily', '毎日'], ['weekly', '毎週'], ['monthly', '毎月'], ['yearly', '毎年']] as const).map(([val, label]) => (
+            {([['none', 'なし'], ['daily', '毎日'], ['weekly', '毎週'], ['monthly', '毎月'], ['yearly', '毎年']] as const).map(([val, label]) => (
               <button
                 key={val}
                 className={`detail-repeat-btn ${repeatType === val ? 'active' : ''}`}
-                onClick={() => setRepeatType(val)}
+                onClick={() => { setRepeatType(val); if (val === 'none') setRangeEnd(''); }}
               >
                 {label}
               </button>
             ))}
           </div>
-          <div className="detail-range-dates">
-            <span className="detail-range-label">{date.slice(5).replace('-', '/')}</span>
-            <span>〜</span>
-            <input
-              type="date"
-              value={rangeEnd}
-              min={date}
-              onChange={e => setRangeEnd(e.target.value)}
-              className="detail-input-date"
-            />
-          </div>
+          {repeatType !== 'none' && (
+            <div className="detail-range-dates">
+              <span className="detail-range-label">{date.slice(5).replace('-', '/')}</span>
+              <span>〜</span>
+              <input
+                type="date"
+                value={rangeEnd}
+                min={date}
+                onChange={e => setRangeEnd(e.target.value)}
+                className="detail-input-date"
+              />
+            </div>
+          )}
         </div>
 
         {/* 保存ボタン */}
