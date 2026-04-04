@@ -1054,6 +1054,7 @@ body {
 .event-add-date-time-row {
   display: flex;
   gap: 12px;
+  padding-right: 4px;
 }
 
 .event-add-date-time-row .event-add-field {
