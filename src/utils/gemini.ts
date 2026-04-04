@@ -111,6 +111,7 @@ export async function analyzeEventImage(apiKey: string, imageBase64: string, mim
 - 日付（YYYY-MM-DD形式）
 - 時間（HH:MM形式、不明なら空文字）
 - 内容（30文字以内で簡潔に要約）
+- URL（画像中にリンクやURLが含まれていれば抽出、なければ空文字）
 
 ## ルール
 - 複数のイベントがあれば全て抽出
@@ -118,7 +119,7 @@ export async function analyzeEventImage(apiKey: string, imageBase64: string, mim
 
 ## 出力（JSONのみ）
 \`\`\`json
-{"events":[{"date":"2026-04-15","time":"15:00","content":"イベント名"}]}
+{"events":[{"date":"2026-04-15","time":"15:00","content":"イベント名","url":""}]}
 \`\`\``;
 
   const text = await callGemini(apiKey, prompt, imageBase64, mimeType);
@@ -129,10 +130,11 @@ export async function analyzeEventImage(apiKey: string, imageBase64: string, mim
 
   const data = JSON.parse(braceMatch[0]);
   return {
-    events: (data.events || []).map((e: { date: string; time: string; content: string }) => ({
+    events: (data.events || []).map((e: { date: string; time: string; content: string; url?: string }) => ({
       date: String(e.date || ''),
       time: String(e.time || ''),
       content: String(e.content || '').substring(0, 50),
+      url: String(e.url || ''),
     })),
   };
 }

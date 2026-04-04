@@ -5,6 +5,7 @@ import { getDaysInMonth, getFirstDayOfWeek, formatDate, getToday, WEEKDAY_LABELS
 import { getDay, saveDay, loadShifts, getSavedMonth, saveCurrentMonth, loadClinicData, saveClinicData } from '../utils/storage';
 import { getHolidays } from '../utils/holidays';
 import DetailPanel from './DetailPanel';
+import EventAddScreen from './EventAddScreen';
 import { useSwipe } from '../hooks/useSwipe';
 
 export default function MonthCalendar() {
@@ -17,6 +18,7 @@ export default function MonthCalendar() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [addingEventDate, setAddingEventDate] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerYear, setPickerYear] = useState(year);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -290,6 +292,15 @@ export default function MonthCalendar() {
           day={getDay(selectedDate)}
           onUpdate={refresh}
           onEditShift={() => { setEditingDate(selectedDate); setSelectedDate(null); }}
+          onAddEvent={() => setAddingEventDate(selectedDate)}
+        />
+      )}
+      {/* イベント追加画面 */}
+      {addingEventDate && (
+        <EventAddScreen
+          dateStr={addingEventDate}
+          onSave={() => { setAddingEventDate(null); refresh(); }}
+          onClose={() => setAddingEventDate(null)}
         />
       )}
     </div>
