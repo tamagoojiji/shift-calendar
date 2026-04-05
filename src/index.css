@@ -1058,8 +1058,10 @@ body {
   gap: 12px;
 }
 
-.event-add-date-time-row input {
-  width: 100%;
+.event-add-date-time-row input.detail-input-time,
+.event-add-date-time-row input.detail-input-date {
+  width: 100% !important;
+  min-width: 0;
   box-sizing: border-box;
 }
 
