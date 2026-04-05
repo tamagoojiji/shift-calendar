@@ -867,7 +867,7 @@ body {
 }
 
 .detail-input-time {
-  width: 100px;
+  width: 100%;
   padding: 10px;
   border: none;
   border-radius: var(--radius-lg);
@@ -1058,9 +1058,8 @@ body {
   gap: 12px;
 }
 
-.event-add-date-time-row input.detail-input-time,
-.event-add-date-time-row input.detail-input-date {
-  width: 100% !important;
+.event-add-date-time-row input {
+  width: 100%;
   min-width: 0;
   box-sizing: border-box;
 }
