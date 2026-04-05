@@ -1025,6 +1025,7 @@ body {
   align-items: center;
   gap: 12px;
   padding: 16px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
   border-bottom: 1px solid var(--outline-variant);
 }
 
