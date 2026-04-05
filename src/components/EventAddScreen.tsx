@@ -168,7 +168,6 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
               value={time}
               onChange={e => setTime(e.target.value)}
               className="detail-input-time"
-              style={{ width: '100%' }}
             />
           </div>
         </div>
