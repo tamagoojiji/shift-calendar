@@ -1053,9 +1053,14 @@ body {
 }
 
 .event-add-date-time-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
   gap: 12px;
+}
+
+.event-add-date-time-row > .event-add-field {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .event-add-date-time-row input {
