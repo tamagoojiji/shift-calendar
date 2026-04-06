@@ -1064,8 +1064,11 @@ body {
 
 .event-add-date-time-row input {
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .event-add-field {
