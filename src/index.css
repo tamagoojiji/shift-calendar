@@ -1870,6 +1870,14 @@ body {
   background: var(--surface-container-high);
 }
 
+.park-cell.cal-sun {
+  background: rgba(168, 56, 54, 0.08);
+}
+
+.park-cell.cal-sat {
+  background: rgba(143, 213, 247, 0.25);
+}
+
 .park-today {
   background: var(--primary-container);
 }
