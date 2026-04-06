@@ -1060,8 +1060,6 @@ body {
 .event-add-date-time-row > .event-add-field {
   flex: 1 1 0;
   min-width: 0;
-  overflow: hidden;
-  border-radius: var(--radius-lg);
 }
 
 .event-add-date-time-row input {
