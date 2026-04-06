@@ -1810,7 +1810,7 @@ body {
 
 /* ===== Park Calendar ===== */
 .park-calendar {
-  padding: 0 4px 16px;
+  padding-bottom: 16px;
 }
 
 .park-tabs {
