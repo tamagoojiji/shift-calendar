@@ -1890,7 +1890,10 @@ body {
 .park-date {
   font-size: 13px;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .park-cell-value {

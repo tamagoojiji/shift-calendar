@@ -203,8 +203,10 @@ export default function ParkCalendar() {
           setAdding(false);
         }}
       >
-        <div className="park-date">{d}</div>
-        {holidayName && <span className="cal-holiday">{holidayName}</span>}
+        <div className="park-date">
+          {d}
+          {holidayName && <span className="cal-holiday">{holidayName}</span>}
+        </div>
         {content && (
           <div className="park-cell-value" style={{ color: content.color }}>
             {content.text}
