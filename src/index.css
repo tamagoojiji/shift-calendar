@@ -350,7 +350,7 @@ body {
   background: var(--surface-container-low);
   border-radius: var(--radius-xl);
   padding: 4px;
-  margin: 0 12px;
+  margin: 0 4px;
 }
 
 .cal-grid {
