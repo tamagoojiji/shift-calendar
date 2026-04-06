@@ -204,6 +204,7 @@ export default function ParkCalendar() {
         }}
       >
         <div className="park-date">{d}</div>
+        {holidayName && <span className="cal-holiday">{holidayName}</span>}
         {content && (
           <div className="park-cell-value" style={{ color: content.color }}>
             {content.text}
