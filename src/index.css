@@ -1814,11 +1814,11 @@ body {
 }
 
 .park-calendar .cal-grid {
-  margin: 0 8px;
+  margin: 0 4px;
 }
 
 .park-calendar .cal-weekdays {
-  padding: 0 8px;
+  margin: 0 4px;
 }
 
 .park-tabs {
