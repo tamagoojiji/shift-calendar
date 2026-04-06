@@ -1810,15 +1810,7 @@ body {
 
 /* ===== Park Calendar ===== */
 .park-calendar {
-  padding-bottom: 16px;
-}
-
-.park-calendar .cal-grid {
-  margin: 0 4px;
-}
-
-.park-calendar .cal-weekdays {
-  margin: 0 4px;
+  padding: 0 4px 16px;
 }
 
 .park-tabs {
