@@ -253,8 +253,10 @@ export default function ParkCalendar() {
       </div>
 
       {/* グリッド */}
-      <div className="cal-grid" {...swipeHandlers}>
-        {cells}
+      <div className="cal-grid-wrap">
+        <div className="cal-grid" {...swipeHandlers}>
+          {cells}
+        </div>
       </div>
 
       {/* 詳細パネル */}
