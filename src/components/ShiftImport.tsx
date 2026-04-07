@@ -218,7 +218,7 @@ function NightShiftImport() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const apiKey = getGeminiApiKey();
+    const apiKey = await getGeminiApiKey();
 
     setLoading(true);
     setError(null);
@@ -375,7 +375,7 @@ function EventImport() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const apiKey = getGeminiApiKey();
+    const apiKey = await getGeminiApiKey();
 
     setLoading(true);
     setError(null);

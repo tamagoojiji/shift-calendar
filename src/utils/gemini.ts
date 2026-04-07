@@ -4,10 +4,29 @@ const GEMINI_MODELS = [
   'gemini-2.5-pro',
 ];
 
-export function getGeminiApiKey(): string {
+export async function getGeminiApiKey(): Promise<string> {
   const key = localStorage.getItem('shift_gemini_key');
-  if (!key) throw new Error('Gemini APIキーが未設定です。設定画面からAPIキーを入力してください。');
-  return key;
+  if (key) return key;
+
+  // localStorageにない場合、Firestoreから再取得を試みる
+  try {
+    const { auth, loadSettingsFromFirestore, loadSharedConfig } = await import('./firebase');
+    const user = auth.currentUser;
+    if (user) {
+      const settings = await loadSettingsFromFirestore(user.uid);
+      if (settings.geminiKey) {
+        localStorage.setItem('shift_gemini_key', settings.geminiKey);
+        return settings.geminiKey;
+      }
+    }
+    const shared = await loadSharedConfig();
+    if (shared.apiKey) {
+      localStorage.setItem('shift_gemini_key', shared.apiKey);
+      return shared.apiKey;
+    }
+  } catch (_) { /* ignore */ }
+
+  throw new Error('Gemini APIキーが未設定です。設定画面からAPIキーを入力してください。');
 }
 
 export async function callGemini(apiKey: string, prompt: string, imageBase64: string, mimeType: string): Promise<string> {

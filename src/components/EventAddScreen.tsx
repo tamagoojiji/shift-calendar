@@ -91,7 +91,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
     setImportError(null);
 
     try {
-      const apiKey = getGeminiApiKey();
+      const apiKey = await getGeminiApiKey();
       const base64 = await fileToBase64(file);
       const data = await analyzeEventImage(apiKey, base64, file.type);
       const events: { date: string; time: string; content: string; url: string }[] = data.events || [];
