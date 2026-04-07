@@ -26,7 +26,14 @@ export async function getGeminiApiKey(): Promise<string> {
     }
   } catch (_) { /* ignore */ }
 
-  throw new Error('Gemini APIキーが未設定です。設定画面からAPIキーを入力してください。');
+  // 最終手段: その場で入力してもらう
+  const input = prompt('Gemini APIキーを入力してください（AIzaSy...）');
+  if (input && input.trim()) {
+    localStorage.setItem('shift_gemini_key', input.trim());
+    return input.trim();
+  }
+
+  throw new Error('Gemini APIキーが未設定です。');
 }
 
 export async function callGemini(apiKey: string, prompt: string, imageBase64: string, mimeType: string): Promise<string> {
