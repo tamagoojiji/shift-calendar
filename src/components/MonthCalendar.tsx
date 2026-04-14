@@ -31,6 +31,39 @@ export default function MonthCalendar() {
   const holidays = useMemo(() => getHolidays(year), [year]);
 
   const refresh = () => setRefreshKey(k => k + 1);
+  const [showRequest, setShowRequest] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const generateRequest = () => {
+    const early17: number[] = [];
+    const hazushiDays: number[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = formatDate(year, month, d);
+      const day = allShifts[dateStr];
+      if (!day) continue;
+      if (day.nightTime === '17') {
+        early17.push(d);
+      }
+      if (day.nightShift === 'hazushi' || (day.isOff && !day.nightShift)) {
+        hazushiDays.push(d);
+      }
+    }
+    const lines: string[] = [];
+    if (early17.length > 0) {
+      lines.push(`17時から勤務可能日：${early17.join('日、')}日`);
+    }
+    if (hazushiDays.length > 0) {
+      lines.push(`夜勤外し日：${hazushiDays.join('日、')}日`);
+    }
+    return lines.length > 0 ? lines.join('\n') : '該当する日がありません';
+  };
+
+  const copyRequest = async () => {
+    const text = generateRequest();
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const prevMonth = useCallback(() => {
     setYear(y => { const newY = month === 1 ? y - 1 : y; return newY; });
@@ -207,9 +240,9 @@ export default function MonthCalendar() {
             ) : (
               <div className="cal-chip-spacer" />
             )}
-            {day.nightShift && (
+            {day.nightShift ? (
               <>
-                {day.nightShift !== 'hazushi' && (
+                {day.nightShift !== 'hazushi' && day.nightTime && (
                   <div className={`cal-chip cal-chip-${day.nightShift}`}>
                     <span className="cal-chip-text">{day.nightTime === '17' ? '17時' : '20時'}</span>
                   </div>
@@ -218,6 +251,10 @@ export default function MonthCalendar() {
                   <span className="cal-chip-text">{SHIFT_LABELS[day.nightShift]}</span>
                 </div>
               </>
+            ) : day.nightTime && (
+              <div className="cal-chip" style={{ background: '#333' }}>
+                <span className="cal-chip-text">{day.nightTime === '17' ? '17時' : '20時'}</span>
+              </div>
             )}
           </>
         )}
@@ -234,11 +271,36 @@ export default function MonthCalendar() {
           <span className="cal-year">{year}年 ▾</span>
         </div>
         <div className="cal-header-right">
+          <button className="cal-today-btn" onClick={() => setShowRequest(true)}>勤務希望</button>
           <button className="cal-today-btn" onClick={goToday}>今日</button>
           <button className="cal-nav-btn" onClick={prevMonth}>◀</button>
           <button className="cal-nav-btn" onClick={nextMonth}>▶</button>
         </div>
       </div>
+
+      {/* 勤務希望モーダル */}
+      {showRequest && (
+        <div className="shift-editor-overlay" onClick={() => { setShowRequest(false); setCopied(false); }}>
+          <div className="shift-editor" onClick={e => e.stopPropagation()}>
+            <div className="shift-editor-header">
+              <span>{month}月 勤務希望</span>
+              <button onClick={() => { setShowRequest(false); setCopied(false); }}>✕</button>
+            </div>
+            <pre style={{ whiteSpace: 'pre-wrap', padding: '16px', fontSize: '14px', lineHeight: '1.8' }}>
+              {generateRequest()}
+            </pre>
+            <div style={{ padding: '0 16px 16px', textAlign: 'center' }}>
+              <button
+                className="cal-today-btn"
+                style={{ padding: '8px 24px', fontSize: '14px' }}
+                onClick={copyRequest}
+              >
+                {copied ? 'コピーしました!' : 'コピー'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 年月ピッカー */}
       {showPicker && (
@@ -410,7 +472,7 @@ function ShiftEditor({ dateStr, day, onSelect, onClose }: {
             </div>
 
             {/* 夜勤時間 */}
-            {day.nightShift && day.nightShift !== 'hazushi' && (
+            {(!day.nightShift || day.nightShift !== 'hazushi') && (
               <div className="shift-section">
                 <div className="shift-section-label">夜勤開始</div>
                 <div className="shift-btn-group">
@@ -424,6 +486,15 @@ function ShiftEditor({ dateStr, day, onSelect, onClose }: {
                       {opt.label}
                     </button>
                   ))}
+                  {day.nightTime && (
+                    <button
+                      className="shift-btn"
+                      style={{ color: '#999' }}
+                      onClick={() => onSelect(dateStr, 'nightTime', null)}
+                    >
+                      なし
+                    </button>
+                  )}
                 </div>
               </div>
             )}
