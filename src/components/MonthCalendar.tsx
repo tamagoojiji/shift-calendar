@@ -252,8 +252,8 @@ export default function MonthCalendar() {
                 </div>
               </>
             ) : day.nightTime && (
-              <div className="cal-chip" style={{ background: '#333' }}>
-                <span className="cal-chip-text">{day.nightTime === '17' ? '17時' : '20時'}</span>
+              <div className="cal-chip" style={{ background: '#E0E0E0', color: '#333' }}>
+                <span className="cal-chip-text" style={{ color: '#333' }}>{day.nightTime === '17' ? '17時' : '20時'}</span>
               </div>
             )}
           </>
