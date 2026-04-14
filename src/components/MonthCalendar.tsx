@@ -136,6 +136,9 @@ export default function MonthCalendar() {
       day.isOff = false;
     } else if (field === 'nightShift') {
       day.nightShift = value as NightShiftPlace;
+      if (day.nightShift === 'hazushi') {
+        day.nightTime = null;
+      }
       day.isOff = false;
     } else if (field === 'nightTime') {
       day.nightTime = value as NightShiftTime;
@@ -206,9 +209,11 @@ export default function MonthCalendar() {
             )}
             {day.nightShift && (
               <>
-                <div className={`cal-chip cal-chip-${day.nightShift}`}>
-                  <span className="cal-chip-text">{day.nightTime === '17' ? '17時' : '20時'}</span>
-                </div>
+                {day.nightShift !== 'hazushi' && (
+                  <div className={`cal-chip cal-chip-${day.nightShift}`}>
+                    <span className="cal-chip-text">{day.nightTime === '17' ? '17時' : '20時'}</span>
+                  </div>
+                )}
                 <div className={`cal-chip cal-chip-${day.nightShift}`}>
                   <span className="cal-chip-text">{SHIFT_LABELS[day.nightShift]}</span>
                 </div>
@@ -405,7 +410,7 @@ function ShiftEditor({ dateStr, day, onSelect, onClose }: {
             </div>
 
             {/* 夜勤時間 */}
-            {day.nightShift && (
+            {day.nightShift && day.nightShift !== 'hazushi' && (
               <div className="shift-section">
                 <div className="shift-section-label">夜勤開始</div>
                 <div className="shift-btn-group">
