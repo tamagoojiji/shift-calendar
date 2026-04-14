@@ -325,6 +325,7 @@ function ShiftEditor({ dateStr, day, onSelect, onClose }: {
     { value: 'hirakata', label: '枚方' },
     { value: 'kadoma', label: '門真' },
     { value: 'moriguchi', label: '守口' },
+    { value: 'hazushi', label: '外し' },
     { value: null, label: 'なし' },
   ];
 

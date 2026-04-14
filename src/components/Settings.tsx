@@ -106,6 +106,7 @@ export default function Settings() {
                 key === 'hirakata' ? '枚方' :
                 key === 'kadoma' ? '門真' :
                 key === 'moriguchi' ? '守口' :
+                key === 'hazushi' ? '外し' :
                 key === 'off' ? '休み' : key
               }</span>
             </div>

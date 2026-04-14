@@ -328,6 +328,7 @@ function NightShiftImport() {
                     <option value="hirakata">枚方</option>
                     <option value="kadoma">門真</option>
                     <option value="moriguchi">守口</option>
+                    <option value="hazushi">外し</option>
                   </select>
                 </td>
                 <td>

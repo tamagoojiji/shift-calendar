@@ -1,6 +1,6 @@
 // 勤務先
 export type DayShiftType = 'eye' | 'facility' | null; // 眼科 / 施設
-export type NightShiftPlace = 'katano' | 'hirakata' | 'kadoma' | 'moriguchi' | null; // 交野/枚方/門真/守口
+export type NightShiftPlace = 'katano' | 'hirakata' | 'kadoma' | 'moriguchi' | 'hazushi' | null; // 交野/枚方/門真/守口/外し
 export type NightShiftTime = '17' | '20' | null;
 
 // 1日のシフトデータ
@@ -48,6 +48,7 @@ export const SHIFT_COLORS: Record<string, string> = {
   hirakata: '#00838F', // ティール（枚方）
   kadoma: '#5E35B1',   // 紫（門真）
   moriguchi: '#3949AB', // インディゴ（守口）
+  hazushi: '#78909C',   // グレー（外し）
   off: '#E57373',      // ピンク（休み）
 };
 
@@ -59,6 +60,7 @@ export const SHIFT_LABELS: Record<string, string> = {
   hirakata: '枚方',
   kadoma: '門真',
   moriguchi: '守口',
+  hazushi: '外し',
 };
 
 // タブ
