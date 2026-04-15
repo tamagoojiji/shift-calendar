@@ -1,76 +1,34 @@
-// チケット価格データ（1デイ・スタジオ・パス 大人）
-// キー: YYYY-MM-DD, 値: 価格（円）
-export const ticketPrices: Record<string, number> = {
-  // 2026年3月
-  '2026-03-20': 10900,
-  '2026-03-21': 10900,
-  '2026-03-22': 9900,
-  '2026-03-23': 9900,
-  '2026-03-24': 9900,
-  '2026-03-25': 9900,
-  '2026-03-26': 9900,
-  '2026-03-27': 10900,
-  '2026-03-28': 10900,
-  '2026-03-29': 9900,
-  '2026-03-30': 9900,
-  '2026-03-31': 10900,
+// チケット価格データ（tamago-park-appから動的fetch）
+const DATA_URL = 'https://park.tamago-ai-world.com/data/ticket-prices.json';
 
-  // 2026年4月
-  '2026-04-01': 10900,
-  '2026-04-02': 9900,
-  '2026-04-03': 9900,
-  '2026-04-04': 9900,
-  '2026-04-05': 9900,
-  '2026-04-06': 9900,
-  '2026-04-07': 9900,
-  '2026-04-08': 9900,
-  '2026-04-09': 9900,
-  '2026-04-10': 9900,
-  '2026-04-11': 9400,
-  '2026-04-12': 9400,
-  '2026-04-13': 9900,
-  '2026-04-14': 9900,
-  '2026-04-15': 9900,
-  '2026-04-16': 9900,
-  '2026-04-17': 9400,
-  '2026-04-18': 9400,
-  '2026-04-19': 9400,
-  '2026-04-20': 9400,
-  '2026-04-21': 9400,
-  '2026-04-22': 9400,
-  '2026-04-23': 9400,
-  '2026-04-24': 9400,
-  '2026-04-25': 9400,
-  '2026-04-26': 9400,
-  '2026-04-27': 9900,
-  '2026-04-28': 9900,
-  '2026-04-29': 9900,
-  '2026-04-30': 9900,
+let cachedPrices: Record<string, number> | null = null;
+let fetchPromise: Promise<Record<string, number>> | null = null;
 
-  // 2026年5月
-  '2026-05-01': 10900,
-  '2026-05-02': 11900,
-  '2026-05-03': 11900,
-  '2026-05-04': 10900,
-  '2026-05-05': 10900,
-  '2026-05-06': 10900,
-  '2026-05-07': 9900,
-  '2026-05-08': 9400,
-  '2026-05-09': 8900,
-  '2026-05-10': 8900,
-  '2026-05-11': 9900,
-  '2026-05-12': 9900,
-  '2026-05-13': 9900,
-  '2026-05-14': 9900,
-  '2026-05-15': 9400,
-  '2026-05-16': 9400,
-  '2026-05-17': 9400,
-  '2026-05-18': 9900,
-  '2026-05-19': 9900,
-  '2026-05-20': 9900,
-  '2026-05-21': 9900,
-  '2026-05-22': 9900,
-};
+export async function fetchTicketPrices(): Promise<Record<string, number>> {
+  if (cachedPrices) return cachedPrices;
+  if (fetchPromise) return fetchPromise;
+
+  fetchPromise = fetch(DATA_URL)
+    .then(res => {
+      if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
+      return res.json();
+    })
+    .then(data => {
+      cachedPrices = data;
+      return data;
+    })
+    .catch(err => {
+      console.error('Failed to load ticket prices:', err);
+      fetchPromise = null;
+      return {};
+    });
+
+  return fetchPromise;
+}
+
+export function getTicketPrices(): Record<string, number> {
+  return cachedPrices || {};
+}
 
 // 価格帯の色分け用
 export function getPriceLevel(price: number): 'low' | 'mid' | 'high' | 'peak' {

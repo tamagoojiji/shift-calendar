@@ -4,7 +4,7 @@ import { getSavedMonth, saveCurrentMonth, getParkDayEvents, saveParkDayEvents, l
 import { getHolidays } from '../utils/holidays';
 import { useSwipe } from '../hooks/useSwipe';
 import { fetchParkHours } from '../data/hours';
-import { ticketPrices, getPriceLevel, formatPrice } from '../data/tickets';
+import { fetchTicketPrices, getPriceLevel, formatPrice } from '../data/tickets';
 import { annualPassExcluded } from '../data/annual-pass';
 import { fetchPrivateEvents } from '../data/private-events';
 import type { PrivateEvent } from '../data/private-events';
@@ -36,10 +36,12 @@ export default function ParkCalendar() {
   const [editContent, setEditContent] = useState('');
   const [privateEvents, setPrivateEvents] = useState<Record<string, PrivateEvent>>({});
   const [parkHours, setParkHours] = useState<Record<string, string>>({});
+  const [ticketPrices, setTicketPrices] = useState<Record<string, number>>({});
 
-  // 営業時間・貸切データ取得
+  // 営業時間・チケット・貸切データ取得
   useEffect(() => {
     fetchParkHours().then(setParkHours);
+    fetchTicketPrices().then(setTicketPrices);
     fetchPrivateEvents().then(setPrivateEvents);
   }, []);
 

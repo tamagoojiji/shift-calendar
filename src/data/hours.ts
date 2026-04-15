@@ -1,5 +1,5 @@
 // 営業時間データ（tamago-park-appから動的fetch）
-const DATA_URL = 'https://tamagoojiji.github.io/tamago-park-app/data/park-hours.json';
+const DATA_URL = 'https://park.tamago-ai-world.com/data/park-hours.json';
 
 let cachedHours: Record<string, string> | null = null;
 let fetchPromise: Promise<Record<string, string>> | null = null;
