@@ -8,6 +8,7 @@ import type { DeletedEvent } from '../utils/storage';
 export default function Settings() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('shift_gemini_key') || '');
   const [saved, setSaved] = useState(false);
+  const [showKey, setShowKey] = useState(false);
   const [deletedEvents, setDeletedEvents] = useState<DeletedEvent[]>(loadDeletedEvents);
   const user = auth.currentUser;
 
@@ -77,13 +78,24 @@ export default function Settings() {
       <div className="settings-section">
         <h3>Gemini APIキー</h3>
         <p className="settings-desc">画像読み取り（シフト・イベント）に使用します。</p>
-        <input
-          type="password"
-          className="settings-input"
-          placeholder="AIzaSy..."
-          value={apiKey}
-          onChange={e => setApiKey(e.target.value)}
-        />
+        <div style={{ position: 'relative' }}>
+          <input
+            type={showKey ? 'text' : 'password'}
+            className="settings-input"
+            placeholder="AIzaSy..."
+            value={apiKey}
+            onChange={e => setApiKey(e.target.value)}
+            style={{ paddingRight: '40px' }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowKey(!showKey)}
+            style={{
+              position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
+              background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#888',
+            }}
+          >{showKey ? '隠す' : '表示'}</button>
+        </div>
         <button className="settings-save-btn" onClick={handleSave}>
           {saved ? '保存しました' : '保存'}
         </button>
