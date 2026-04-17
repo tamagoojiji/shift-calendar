@@ -2,6 +2,8 @@ import { useState, useRef, useCallback } from 'react';
 import type { DetailItem } from '../types';
 import { getDay, saveDay } from '../utils/storage';
 import { analyzeEventImage, getGeminiApiKey } from '../utils/gemini';
+import { setReminder, requestNotificationPermission, TIMING_LABELS } from '../utils/reminder';
+import type { ReminderTiming } from '../utils/reminder';
 
 interface Props {
   dateStr: string;
@@ -16,6 +18,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
   const [url, setUrl] = useState('');
   const [rangeEnd, setRangeEnd] = useState('');
   const [repeatType, setRepeatType] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
+  const [reminderTimings, setReminderTimings] = useState<ReminderTiming[]>([]);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const imageRef = useRef<HTMLInputElement>(null);
@@ -23,6 +26,19 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
 
   const handleCompositionStart = useCallback(() => { composingRef.current = true; }, []);
   const handleCompositionEnd = useCallback(() => { composingRef.current = false; }, []);
+
+  const toggleReminderTiming = async (timing: ReminderTiming) => {
+    if (!reminderTimings.includes(timing)) {
+      const ok = await requestNotificationPermission();
+      if (!ok) {
+        alert('通知を許可してください');
+        return;
+      }
+      setReminderTimings([...reminderTimings, timing]);
+    } else {
+      setReminderTimings(reminderTimings.filter(t => t !== timing));
+    }
+  };
 
   const handleSave = () => {
     if (!content.trim()) return;
@@ -44,6 +60,9 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
         };
         targetDay.details = [...(targetDay.details || []), item];
         saveDay(targetDay);
+        if (time && reminderTimings.length > 0) {
+          setReminder(item.id, ds, time, trimContent, reminderTimings);
+        }
         count++;
       };
 
@@ -78,6 +97,9 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
       };
       targetDay.details = [...(targetDay.details || []), item];
       saveDay(targetDay);
+      if (time && reminderTimings.length > 0) {
+        setReminder(item.id, date, time, trimContent, reminderTimings);
+      }
     }
 
     onSave();
@@ -188,6 +210,25 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
             autoFocus
           />
         </div>
+
+        {/* アラーム */}
+        {time && (
+          <div className="event-add-field">
+            <label className="event-add-label">🔔 アラーム</label>
+            <div className="reminder-timing-picker">
+              {(Object.entries(TIMING_LABELS) as [ReminderTiming, string][]).map(([key, label]) => (
+                <label key={key} className="reminder-timing-item">
+                  <input
+                    type="checkbox"
+                    checked={reminderTimings.includes(key)}
+                    onChange={() => toggleReminderTiming(key)}
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* URL */}
         <div className="event-add-field">
