@@ -1557,6 +1557,22 @@ body {
   color: var(--on-surface-variant);
 }
 
+.import-undo-btn {
+  flex: 1;
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline);
+  padding: 12px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--on-surface);
+}
+
+.import-undo-btn:active {
+  opacity: 0.85;
+}
+
 /* ===== Import Mode Tabs ===== */
 .import-mode-tabs {
   display: flex;

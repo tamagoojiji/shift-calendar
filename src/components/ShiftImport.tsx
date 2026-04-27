@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
-import type { NightShiftPlace, NightShiftTime } from '../types';
-import { saveDay, getDay, getSavedMonth, saveCurrentMonth } from '../utils/storage';
+import type { NightShiftPlace, NightShiftTime, DayData } from '../types';
+import { saveDay, getDay, getSavedMonth, saveCurrentMonth, loadShifts, saveShifts } from '../utils/storage';
+
+const NIGHT_SHIFT_UNDO_KEY = 'night_shift_undo_backup';
 import { getDaysInMonth, formatDate, getToday, WEEKDAY_LABELS } from '../utils/dateUtils';
 import { analyzeShiftImage, analyzeEventImage, getGeminiApiKey } from '../utils/gemini';
 
@@ -212,6 +214,7 @@ function NightShiftImport() {
   const [error, setError] = useState<string | null>(null);
   const [shiftYear, setShiftYear] = useState(savedM.year);
   const [shiftMonth, setShiftMonth] = useState(savedM.month);
+  const [hasUndoBackup, setHasUndoBackup] = useState(() => localStorage.getItem(NIGHT_SHIFT_UNDO_KEY) !== null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -241,6 +244,13 @@ function NightShiftImport() {
   const applyShifts = () => {
     if (editShifts.length === 0) return;
 
+    if (!confirm(`${shiftMonth}月でOKですか？\n（${shiftYear}年${shiftMonth}月の夜勤として反映します）`)) {
+      return;
+    }
+
+    const snapshot = loadShifts();
+    localStorage.setItem(NIGHT_SHIFT_UNDO_KEY, JSON.stringify(snapshot));
+
     editShifts.forEach(shift => {
       const dateStr = `${shiftYear}-${String(shiftMonth).padStart(2, '0')}-${String(shift.day).padStart(2, '0')}`;
       const day = getDay(dateStr);
@@ -249,8 +259,24 @@ function NightShiftImport() {
       saveDay(day);
     });
 
+    setHasUndoBackup(true);
     alert(`${editShifts.length}件のシフトを反映しました`);
     setEditShifts([]);
+  };
+
+  const undoApply = () => {
+    const raw = localStorage.getItem(NIGHT_SHIFT_UNDO_KEY);
+    if (!raw) return;
+    if (!confirm('直前の反映を取り消しますか？')) return;
+    try {
+      const snapshot = JSON.parse(raw) as Record<string, DayData>;
+      saveShifts(snapshot);
+      localStorage.removeItem(NIGHT_SHIFT_UNDO_KEY);
+      setHasUndoBackup(false);
+      alert('直前の反映を取り消しました');
+    } catch {
+      alert('取り消しに失敗しました');
+    }
   };
 
   const updateShift = (index: number, field: keyof ParsedShift, value: unknown) => {
@@ -351,6 +377,12 @@ function NightShiftImport() {
         <div className="import-actions">
           <button className="import-apply-btn" onClick={applyShifts}>カレンダーに反映</button>
           <button className="import-cancel-btn" onClick={() => setEditShifts([])}>クリア</button>
+        </div>
+      )}
+
+      {hasUndoBackup && (
+        <div className="import-actions">
+          <button className="import-undo-btn" onClick={undoApply}>↩ 直前の反映を取り消す</button>
         </div>
       )}
     </div>
