@@ -11,6 +11,15 @@ interface Props {
   onClose: () => void;
 }
 
+interface PendingEvent {
+  id: string;
+  date: string;
+  time: string;
+  content: string;
+  url: string;
+  checked: boolean;
+}
+
 export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
   const [date, setDate] = useState(dateStr);
   const [time, setTime] = useState('');
@@ -21,6 +30,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
   const [reminderTimings, setReminderTimings] = useState<ReminderTiming[]>([]);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [pendingEvents, setPendingEvents] = useState<PendingEvent[] | null>(null);
   const imageRef = useRef<HTMLInputElement>(null);
   const composingRef = useRef(false);
 
@@ -105,6 +115,32 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
     onSave();
   };
 
+  const updatePending = (id: string, patch: Partial<PendingEvent>) => {
+    setPendingEvents(prev => prev?.map(p => p.id === id ? { ...p, ...patch } : p) ?? null);
+  };
+
+  const handleBulkRegister = () => {
+    if (!pendingEvents) return;
+    const targets = pendingEvents.filter(p => p.checked && p.content.trim());
+    if (targets.length === 0) {
+      alert('登録する予定を選択してください');
+      return;
+    }
+    targets.forEach((evt, i) => {
+      const targetDay = getDay(evt.date);
+      const item: DetailItem = {
+        id: Date.now().toString() + '_b' + i,
+        time: evt.time,
+        content: evt.content.trim(),
+        ...(evt.url.trim() && { url: evt.url.trim() }),
+      };
+      targetDay.details = [...(targetDay.details || []), item];
+      saveDay(targetDay);
+    });
+    setPendingEvents(null);
+    onSave();
+  };
+
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -123,39 +159,14 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
         return;
       }
 
-      // 1件目をフォームにセット
-      const first = events[0];
-      if (first.date) setDate(first.date);
-      if (first.time) setTime(first.time);
-      if (first.content) setContent(first.content);
-      if (first.url) setUrl(first.url);
-
-      // 複数件の場合は残りを一括登録
-      if (events.length > 1) {
-        const rest = events.slice(1);
-        const doBulk = confirm(`他${rest.length}件も一括登録しますか？`);
-        if (doBulk) {
-          let count = 0;
-          rest.forEach((evt) => {
-            const targetDate = evt.date || dateStr;
-            const targetDay = getDay(targetDate);
-            const item: DetailItem = {
-              id: Date.now().toString() + '_b' + count,
-              time: evt.time || '',
-              content: evt.content || '',
-              ...(evt.url && { url: evt.url }),
-            };
-            targetDay.details = [...(targetDay.details || []), item];
-            saveDay(targetDay);
-            count++;
-          });
-          if (count > 0) {
-            alert(`${count}件のイベントを追加登録しました`);
-            onSave();
-            return;
-          }
-        }
-      }
+      setPendingEvents(events.map((evt, i) => ({
+        id: 'p_' + Date.now() + '_' + i,
+        date: evt.date || dateStr,
+        time: evt.time || '',
+        content: evt.content || '',
+        url: evt.url || '',
+        checked: true,
+      })));
     } catch (err) {
       setImportError(err instanceof Error ? err.message : '読み取りに失敗しました');
     } finally {
@@ -163,6 +174,72 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
       if (imageRef.current) imageRef.current.value = '';
     }
   };
+
+  if (pendingEvents) {
+    const checkedCount = pendingEvents.filter(p => p.checked).length;
+    return (
+      <div className="event-add-screen">
+        <div className="event-add-header">
+          <button className="event-add-back" onClick={() => setPendingEvents(null)}>← 戻る</button>
+          <span className="event-add-title">読み取り結果の確認</span>
+        </div>
+        <div className="event-add-body">
+          <div className="pending-events-summary">
+            {pendingEvents.length}件読み取りました。登録する予定にチェックを入れてください。
+          </div>
+          {pendingEvents.map(p => (
+            <div key={p.id} className={`pending-event-row ${p.checked ? '' : 'unchecked'}`}>
+              <label className="pending-event-check">
+                <input
+                  type="checkbox"
+                  checked={p.checked}
+                  onChange={e => updatePending(p.id, { checked: e.target.checked })}
+                />
+              </label>
+              <div className="pending-event-fields">
+                <div className="pending-event-row-inline">
+                  <input
+                    type="date"
+                    value={p.date}
+                    onChange={e => updatePending(p.id, { date: e.target.value })}
+                    className="detail-input-date"
+                  />
+                  <input
+                    type="time"
+                    value={p.time}
+                    onChange={e => updatePending(p.id, { time: e.target.value })}
+                    className="detail-input-time"
+                  />
+                </div>
+                <input
+                  type="text"
+                  value={p.content}
+                  onChange={e => updatePending(p.id, { content: e.target.value })}
+                  placeholder="予定内容"
+                  className="detail-input-content"
+                />
+                <input
+                  type="url"
+                  value={p.url}
+                  onChange={e => updatePending(p.id, { url: e.target.value })}
+                  placeholder="URL（任意）"
+                  className="detail-input-url"
+                />
+              </div>
+            </div>
+          ))}
+          <button
+            className="detail-save-btn"
+            style={{ width: '100%', marginTop: 8 }}
+            onClick={handleBulkRegister}
+            disabled={checkedCount === 0}
+          >
+            選択した{checkedCount}件を登録
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="event-add-screen">

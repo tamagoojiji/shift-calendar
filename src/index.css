@@ -1107,6 +1107,54 @@ body {
   cursor: default;
 }
 
+.pending-events-summary {
+  font-size: 13px;
+  color: var(--on-surface-variant);
+  padding: 8px 4px;
+}
+
+.pending-event-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  background: var(--surface-container-low);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--outline-variant);
+}
+
+.pending-event-row.unchecked {
+  opacity: 0.5;
+}
+
+.pending-event-check {
+  display: flex;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.pending-event-check input {
+  width: 20px;
+  height: 20px;
+}
+
+.pending-event-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pending-event-row-inline {
+  display: flex;
+  gap: 6px;
+}
+
+.pending-event-row-inline > input {
+  flex: 1;
+  min-width: 0;
+}
+
 /* ===== Clinic Calendar ===== */
 .clinic-calendar {
   padding-bottom: 16px;
