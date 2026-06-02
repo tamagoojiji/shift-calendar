@@ -1047,6 +1047,7 @@ body {
 
 .event-add-body {
   padding: 20px 16px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
   display: flex;
   flex-direction: column;
   gap: 16px;
