@@ -47,6 +47,7 @@ export async function callGemini(apiKey: string, prompt: string, imageBase64: st
     generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
   };
 
+  const failures: string[] = [];
   for (const model of GEMINI_MODELS) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -63,17 +64,23 @@ export async function callGemini(apiKey: string, prompt: string, imageBase64: st
         return textParts.map((p: { text: string }) => p.text).join('\n').trim();
       }
 
+      const body = await res.text().catch(() => '');
+      const reason = body.match(/"message"\s*:\s*"([^"]+)"/)?.[1] || body.slice(0, 120);
+      failures.push(`${model}:${res.status}${reason ? ` ${reason}` : ''}`);
+
       if (res.status === 403 || res.status === 429 || res.status === 404 || res.status === 503) {
         continue;
       }
 
-      throw new Error(`Gemini API HTTP ${res.status}`);
+      throw new Error(`Gemini API HTTP ${res.status} ${reason}`);
     } catch (err) {
-      if (model === GEMINI_MODELS[GEMINI_MODELS.length - 1]) throw err;
+      if (model === GEMINI_MODELS[GEMINI_MODELS.length - 1]) {
+        throw new Error(`Gemini全モデル失敗: ${failures.join(' / ')}`);
+      }
     }
   }
 
-  throw new Error('全てのGeminiモデルで失敗しました');
+  throw new Error(`Gemini全モデル失敗: ${failures.join(' / ')}`);
 }
 
 // シフト表解析
