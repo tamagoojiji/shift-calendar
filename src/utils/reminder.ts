@@ -38,6 +38,10 @@ export function setReminder(eventId: string, date: string, time: string, content
   const reminders = getReminders();
   const idx = reminders.findIndex(r => r.eventId === eventId && r.date === date);
   if (idx >= 0) {
+    // 時刻が変わったら通知済み状態をリセットし、新しい時刻で再通知できるようにする
+    if (reminders[idx].time !== time) {
+      reminders[idx].notified = [];
+    }
     reminders[idx].timings = timings;
     reminders[idx].time = time;
     reminders[idx].content = content;

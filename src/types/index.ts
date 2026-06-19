@@ -16,7 +16,8 @@ export interface DayData {
 // 詳細予定
 export interface DetailItem {
   id: string;
-  time: string; // HH:MM
+  time: string; // HH:MM（開始時間。空なら終日）
+  endTime?: string; // HH:MM（終了時間。任意）
   content: string;
   url?: string;
 }

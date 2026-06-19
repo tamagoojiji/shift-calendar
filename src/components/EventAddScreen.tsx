@@ -4,6 +4,7 @@ import { getDay, saveDay } from '../utils/storage';
 import { analyzeEventImage, getGeminiApiKey } from '../utils/gemini';
 import { setReminder, requestNotificationPermission, TIMING_LABELS } from '../utils/reminder';
 import type { ReminderTiming } from '../utils/reminder';
+import TimeField from './TimeField';
 
 interface Props {
   dateStr: string;
@@ -23,6 +24,7 @@ interface PendingEvent {
 export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
   const [date, setDate] = useState(dateStr);
   const [time, setTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [content, setContent] = useState('');
   const [url, setUrl] = useState('');
   const [rangeEnd, setRangeEnd] = useState('');
@@ -65,6 +67,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
         const item: DetailItem = {
           id: Date.now().toString() + '_' + count,
           time,
+          ...(time && endTime && { endTime }),
           content: trimContent,
           ...(trimUrl && { url: trimUrl }),
         };
@@ -102,6 +105,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
       const item: DetailItem = {
         id: Date.now().toString(),
         time,
+        ...(time && endTime && { endTime }),
         content: trimContent,
         ...(trimUrl && { url: trimUrl }),
       };
@@ -249,25 +253,26 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
       </div>
 
       <div className="event-add-body">
-        {/* 日付 + 時間 横並び */}
+        {/* 日付 */}
+        <div className="event-add-field">
+          <label className="event-add-label">📅 日付</label>
+          <input
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            className="detail-input-date"
+          />
+        </div>
+
+        {/* 開始時間 + 終了時間 横並び（未入力なら終日） */}
         <div className="event-add-date-time-row">
           <div className="event-add-field">
-            <label className="event-add-label">📅 日付</label>
-            <input
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              className="detail-input-date"
-            />
+            <label className="event-add-label">🕐 開始時間</label>
+            <TimeField value={time} onChange={setTime} placeholder="時間を入力" />
           </div>
           <div className="event-add-field">
-            <label className="event-add-label">🕐 時間</label>
-            <input
-              type="time"
-              value={time}
-              onChange={e => setTime(e.target.value)}
-              className="detail-input-time"
-            />
+            <label className="event-add-label">🕐 終了時間</label>
+            <TimeField value={endTime} onChange={setEndTime} placeholder="時間を入力" />
           </div>
         </div>
 

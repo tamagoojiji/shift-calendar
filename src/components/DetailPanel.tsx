@@ -5,6 +5,7 @@ import { saveDay, getDay, addDeletedEvent } from '../utils/storage';
 import { WEEKDAY_LABELS } from '../utils/dateUtils';
 import { setReminder, removeReminder, hasReminder, getReminder, requestNotificationPermission, TIMING_LABELS } from '../utils/reminder';
 import type { ReminderTiming } from '../utils/reminder';
+import TimeField from './TimeField';
 
 interface Props {
   dateStr: string;
@@ -18,6 +19,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
   const [showAll, setShowAll] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editTime, setEditTime] = useState('');
+  const [editEndTime, setEditEndTime] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editUrl, setEditUrl] = useState('');
   const [editUseRange, setEditUseRange] = useState(false);
@@ -45,6 +47,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
   const startEditDetail = (item: DetailItem) => {
     setEditingItemId(item.id);
     setEditTime(item.time);
+    setEditEndTime(item.endTime || '');
     setEditContent(item.content);
     setEditUrl(item.url || '');
     setEditUseRange(false);
@@ -56,12 +59,24 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
     if (!editingItemId || !editContent.trim()) return;
     const content = editContent.trim();
     const time = editTime;
+    // 開始時間がない（終日）なら終了時間は保持しない
+    const endTime = time && editEndTime ? editEndTime : undefined;
 
     const url = editUrl.trim() || undefined;
     day.details = (day.details || []).map(d =>
-      d.id === editingItemId ? { ...d, time, content, url } : d
+      d.id === editingItemId ? { ...d, time, endTime, content, url } : d
     );
     saveDay(day);
+
+    // 既存リマインダーを編集後の状態に同期（終日化したら削除、時刻/内容変更は反映）
+    const existingReminder = getReminder(editingItemId, dateStr);
+    if (existingReminder) {
+      if (time) {
+        setReminder(editingItemId, dateStr, time, content, existingReminder.timings);
+      } else {
+        removeReminder(editingItemId, dateStr);
+      }
+    }
 
     if (editUseRange && editRangeEnd && editRangeEnd >= dateStr) {
       const start = new Date(dateStr);
@@ -74,6 +89,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
         const item: DetailItem = {
           id: Date.now().toString() + '_e' + count,
           time,
+          ...(endTime && { endTime }),
           content,
           ...(url && { url }),
         };
@@ -106,6 +122,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
     }
 
     setEditingItemId(null);
+    setEditEndTime('');
     setEditUseRange(false);
     setEditRangeEnd('');
     setEditRepeatType('daily');
@@ -159,12 +176,16 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
       {(showAll ? sortedDetails : sortedDetails.slice(0, 3)).map(item => (
         editingItemId === item.id ? (
           <div key={item.id} className="detail-add-form">
-            <input
-              type="time"
-              value={editTime}
-              onChange={e => setEditTime(e.target.value)}
-              className="detail-input-time"
-            />
+            <div className="detail-time-row">
+              <div className="detail-time-field">
+                <label className="detail-time-label">開始</label>
+                <TimeField value={editTime} onChange={setEditTime} placeholder="時間を入力" />
+              </div>
+              <div className="detail-time-field">
+                <label className="detail-time-label">終了</label>
+                <TimeField value={editEndTime} onChange={setEditEndTime} placeholder="時間を入力" />
+              </div>
+            </div>
             <input
               type="text"
               value={editContent}
@@ -219,13 +240,13 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
               )}
             </div>
             <button className="detail-save-btn" onClick={saveEditDetail}>保存</button>
-            <button className="detail-cancel-btn" onClick={() => { setEditingItemId(null); setEditUseRange(false); setEditRangeEnd(''); setEditRepeatType('daily'); }}>取消</button>
+            <button className="detail-cancel-btn" onClick={() => { setEditingItemId(null); setEditEndTime(''); setEditUseRange(false); setEditRangeEnd(''); setEditRepeatType('daily'); }}>取消</button>
             <button className="detail-item-delete" onClick={() => { removeDetail(item.id); setEditingItemId(null); }}>削除</button>
           </div>
         ) : (
           <div key={item.id}>
             <div className="detail-item">
-              <div className="detail-item-time" onClick={() => startEditDetail(item)}>{item.time || '--:--'}</div>
+              <div className="detail-item-time" onClick={() => startEditDetail(item)}>{item.time || '終日'}</div>
               <div className="detail-item-content" onClick={() => startEditDetail(item)}>{item.content}</div>
               {item.time && (
                 <button
