@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>殿上さん 勤務表</title>
+<style>
+  @page {
+    size: A5 landscape;
+    margin: 8mm;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Hiragino Kaku Gothic Pro", "Yu Gothic", "Meiryo", sans-serif;
+    width: 210mm;
+    height: 148mm;
+    padding: 6mm;
+    display: flex;
+    flex-direction: column;
+  }
+  h1 {
+    text-align: center;
+    font-size: 16px;
+    margin-bottom: 6px;
+    letter-spacing: 2px;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 8px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    flex: 1;
+  }
+  th, td {
+    border: 1px solid #999;
+    text-align: center;
+    vertical-align: top;
+    padding: 2px 3px;
+    font-size: 11px;
+  }
+  th {
+    background: #f0f0f0;
+    font-weight: bold;
+    height: 22px;
+    vertical-align: middle;
+  }
+  th.sun { color: #d32f2f; background: #fff0f0; }
+  th.sat { color: #1565c0; background: #f0f4ff; }
+  td { height: 50px; }
+  td .day {
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 2px;
+  }
+  td .shift {
+    font-size: 16px;
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-top: 2px;
+  }
+  td.sun { background: #fff5f5; }
+  td.sun .day { color: #d32f2f; }
+  td.sat { background: #f5f8ff; }
+  td.sat .day { color: #1565c0; }
+  td.holiday .day { color: #d32f2f; }
+  td.holiday .holiday-name {
+    font-size: 8px;
+    color: #d32f2f;
+    display: block;
+  }
+  .shift.am { background: #e3f2fd; color: #1565c0; }
+  .shift.pm { background: #fce4ec; color: #c62828; }
+  .shift.ampm { background: #e8f5e9; color: #2e7d32; }
+  .shift.off { background: #f5f5f5; color: #999; font-weight: normal; font-size: 14px; }
+  td.empty { background: #fafafa; }
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 6px;
+    font-size: 10px;
+    color: #555;
+  }
+  .legend span {
+    padding: 1px 8px;
+    border-radius: 3px;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<h1 id="title"></h1>
+<div class="subtitle" id="subtitle"></div>
+<table>
+  <thead>
+    <tr>
+      <th class="sun">日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th class="sat">土</th>
+    </tr>
+  </thead>
+  <tbody id="calendar-body"></tbody>
+</table>
+<div class="legend">
+  <div><span class="shift am">午前</span> AM勤務</div>
+  <div><span class="shift pm">午後</span> PM勤務</div>
+  <div><span class="shift ampm">全日</span> AM+PM勤務</div>
+  <div><span class="shift off">休み</span></div>
+</div>
+
+<script>
+// ============================================================
+//  ★ ここだけ毎月変更する ★
+// ============================================================
+const YEAR  = 2026;
+const MONTH = 4; // 1〜12
+
+// シフトデータ: 日付 → "am" / "pm" / "ampm" / "off"
+const SHIFTS = {
+  10: "pm",
+  11: "am",
+  13: "am",
+  14: "am",
+  15: "am",
+  16: "off",
+  17: "ampm",
+  18: "am",
+  20: "am",
+  21: "ampm",
+  22: "off",
+  23: "am",
+  24: "pm",
+  25: "am",
+  27: "am",
+  28: "am",
+  29: "off",
+  30: "am",
+};
+
+// 祝日データ: 日付 → 祝日名
+const HOLIDAYS = {
+  29: "昭和の日",
+};
+// ============================================================
+
+const SHIFT_LABEL = { am: "午前", pm: "午後", ampm: "全日", off: "休み" };
+
+document.getElementById("title").textContent = `殿上さん　${MONTH}月 勤務表`;
+document.getElementById("subtitle").textContent = `${YEAR}年${MONTH}月`;
+
+const firstDay  = new Date(YEAR, MONTH - 1, 1);
+const lastDate  = new Date(YEAR, MONTH, 0).getDate();
+const startDow  = firstDay.getDay(); // 0=Sun
+
+const tbody = document.getElementById("calendar-body");
+let day = 1;
+
+for (let row = 0; row < 6; row++) {
+  if (day > lastDate) break;
+  const tr = document.createElement("tr");
+
+  for (let col = 0; col < 7; col++) {
+    const td = document.createElement("td");
+    const cellIndex = row * 7 + col;
+
+    if (cellIndex < startDow || day > lastDate) {
+      td.className = col === 0 ? "sun empty" : col === 6 ? "sat empty" : "empty";
+      tr.appendChild(td);
+      continue;
+    }
+
+    // 曜日クラス
+    if (col === 0) td.classList.add("sun");
+    if (col === 6) td.classList.add("sat");
+
+    // 祝日
+    if (HOLIDAYS[day]) {
+      td.classList.add("holiday");
+    }
+
+    // 日付
+    const dayDiv = document.createElement("div");
+    dayDiv.className = "day";
+    dayDiv.textContent = day;
+    td.appendChild(dayDiv);
+
+    // 祝日名
+    if (HOLIDAYS[day]) {
+      const hSpan = document.createElement("span");
+      hSpan.className = "holiday-name";
+      hSpan.textContent = HOLIDAYS[day];
+      td.appendChild(hSpan);
+    }
+
+    // シフト
+    if (SHIFTS[day]) {
+      const sSpan = document.createElement("span");
+      sSpan.className = "shift " + SHIFTS[day];
+      sSpan.textContent = SHIFT_LABEL[SHIFTS[day]];
+      td.appendChild(sSpan);
+    }
+
+    day++;
+    tr.appendChild(td);
+  }
+  tbody.appendChild(tr);
+}
+</script>
+</body>
+</html>
