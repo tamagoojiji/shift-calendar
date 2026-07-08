@@ -4,7 +4,7 @@ import { saveDay, getDay, getSavedMonth, saveCurrentMonth, loadShifts, saveShift
 
 const NIGHT_SHIFT_UNDO_KEY = 'night_shift_undo_backup';
 import { getDaysInMonth, formatDate, getToday, WEEKDAY_LABELS } from '../utils/dateUtils';
-import { analyzeShiftImage, analyzeEventImage, getGeminiApiKey } from '../utils/gemini';
+import { analyzeShiftImage, analyzeEventImage } from '../utils/gemini';
 
 // === 夜勤関連の型 ===
 interface ParsedShift {
@@ -221,14 +221,12 @@ function NightShiftImport() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const apiKey = await getGeminiApiKey();
-
     setLoading(true);
     setError(null);
 
     try {
       const base64 = await fileToBase64(file);
-      const data = await analyzeShiftImage(apiKey, base64, file.type);
+      const data = await analyzeShiftImage(base64, file.type);
 
       setShiftYear(data.year);
       setShiftMonth(data.month);
@@ -408,14 +406,12 @@ function EventImport() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const apiKey = await getGeminiApiKey();
-
     setLoading(true);
     setError(null);
 
     try {
       const base64 = await fileToBase64(file);
-      const data = await analyzeEventImage(apiKey, base64, file.type);
+      const data = await analyzeEventImage(base64, file.type);
 
       if (data.events && data.events.length > 0) {
         setEvents(prev => [...prev, ...data.events]);

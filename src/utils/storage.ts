@@ -1,5 +1,5 @@
 import type { DayData, ClinicMonthData, Staff, DetailItem } from '../types';
-import { saveShiftsToFirestore, saveClinicToFirestore, saveStaffToFirestore, saveSettingsToFirestore } from './firebase';
+import { saveShiftsToFirestore, saveClinicToFirestore, saveStaffToFirestore } from './firebase';
 
 const STORAGE_KEYS = {
   shifts: 'shift_calendar_data',
@@ -15,7 +15,7 @@ export function setCurrentUid(uid: string | null) {
 }
 
 // Firestoreへの非同期保存（バックグラウンド）
-function syncToFirestore(type: 'shifts' | 'clinic' | 'staff' | 'settings', data: unknown) {
+function syncToFirestore(type: 'shifts' | 'clinic' | 'staff', data: unknown) {
   if (!currentUid) return;
   const uid = currentUid;
 
@@ -26,7 +26,6 @@ function syncToFirestore(type: 'shifts' | 'clinic' | 'staff' | 'settings', data:
       if (type === 'shifts') await saveShiftsToFirestore(uid, data as Record<string, DayData>);
       else if (type === 'clinic') await saveClinicToFirestore(uid, data as Record<string, ClinicMonthData>);
       else if (type === 'staff') await saveStaffToFirestore(uid, data as Staff[]);
-      else if (type === 'settings') await saveSettingsToFirestore(uid, data as Record<string, string>);
     } catch (err) {
       console.error('Firestore sync error:', err);
     }

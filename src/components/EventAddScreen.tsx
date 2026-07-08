@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import type { DetailItem } from '../types';
 import { getDay, saveDay } from '../utils/storage';
-import { analyzeEventImage, getGeminiApiKey } from '../utils/gemini';
+import { analyzeEventImage } from '../utils/gemini';
 import { setReminder, requestNotificationPermission, TIMING_LABELS } from '../utils/reminder';
 import type { ReminderTiming } from '../utils/reminder';
 import TimeField from './TimeField';
@@ -153,9 +153,8 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
     setImportError(null);
 
     try {
-      const apiKey = await getGeminiApiKey();
       const base64 = await fileToBase64(file);
-      const data = await analyzeEventImage(apiKey, base64, file.type);
+      const data = await analyzeEventImage(base64, file.type);
       const events: { date: string; time: string; content: string; url: string }[] = data.events || [];
 
       if (events.length === 0) {

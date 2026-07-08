@@ -1,14 +1,10 @@
 import { useState } from 'react';
 import { SHIFT_COLORS } from '../types';
 import { logout, loginWithGoogle, auth } from '../utils/firebase';
-import { saveSettingsToFirestore } from '../utils/firebase';
 import { loadDeletedEvents, removeDeletedEvent, getDay, saveDay, getParkDayEvents, saveParkDayEvents } from '../utils/storage';
 import type { DeletedEvent } from '../utils/storage';
 
 export default function Settings() {
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('shift_gemini_key') || '');
-  const [saved, setSaved] = useState(false);
-  const [showKey, setShowKey] = useState(false);
   const [deletedEvents, setDeletedEvents] = useState<DeletedEvent[]>(loadDeletedEvents);
   const user = auth.currentUser;
 
@@ -24,20 +20,6 @@ export default function Settings() {
     }
     removeDeletedEvent(index);
     setDeletedEvents(loadDeletedEvents());
-  };
-
-  const handleSave = async () => {
-    localStorage.setItem('shift_gemini_key', apiKey.trim());
-    // Firestoreにも保存
-    if (user) {
-      try {
-        await saveSettingsToFirestore(user.uid, { geminiKey: apiKey.trim() });
-      } catch (err) {
-        console.error('Settings sync error:', err);
-      }
-    }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
   };
 
   const handleLogout = async () => {
@@ -71,36 +53,6 @@ export default function Settings() {
               Googleでログイン
             </button>
           </>
-        )}
-      </div>
-
-      {/* Gemini APIキー */}
-      <div className="settings-section">
-        <h3>Gemini APIキー</h3>
-        <p className="settings-desc">画像読み取り（シフト・イベント）に使用します。</p>
-        <div style={{ position: 'relative' }}>
-          <input
-            type={showKey ? 'text' : 'password'}
-            className="settings-input"
-            placeholder="AIzaSy..."
-            value={apiKey}
-            onChange={e => setApiKey(e.target.value)}
-            style={{ paddingRight: '40px' }}
-          />
-          <button
-            type="button"
-            onClick={() => setShowKey(!showKey)}
-            style={{
-              position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
-              background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#888',
-            }}
-          >{showKey ? '隠す' : '表示'}</button>
-        </div>
-        <button className="settings-save-btn" onClick={handleSave}>
-          {saved ? '保存しました' : '保存'}
-        </button>
-        {localStorage.getItem('shift_gemini_key') && (
-          <div style={{ fontSize: '11px', color: '#4CAF50', marginTop: '4px' }}>設定済み</div>
         )}
       </div>
 

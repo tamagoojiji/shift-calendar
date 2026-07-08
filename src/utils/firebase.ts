@@ -76,28 +76,3 @@ export async function loadStaffFromFirestore(uid: string): Promise<Staff[]> {
   return [{ id: 'yotsuhashi', name: '四ツ橋' }];
 }
 
-// 設定（APIキー等）
-export async function saveSettingsToFirestore(uid: string, settings: Record<string, string>): Promise<void> {
-  await setDoc(getUserDocRef(uid, 'settings'), settings, { merge: true });
-}
-
-export async function loadSettingsFromFirestore(uid: string): Promise<Record<string, string>> {
-  const snap = await getDoc(getUserDocRef(uid, 'settings'));
-  if (snap.exists()) {
-    return snap.data() as Record<string, string>;
-  }
-  return {};
-}
-
-// 共有設定（Gemini APIキー等）— 認証済みユーザーなら誰でも読める
-export async function loadSharedConfig(): Promise<Record<string, string>> {
-  const snap = await getDoc(doc(db, 'config', 'gemini'));
-  if (snap.exists()) {
-    return snap.data() as Record<string, string>;
-  }
-  return {};
-}
-
-export async function saveSharedConfig(config: Record<string, string>): Promise<void> {
-  await setDoc(doc(db, 'config', 'gemini'), config, { merge: true });
-}
