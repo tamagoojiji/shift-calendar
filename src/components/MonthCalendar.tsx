@@ -140,13 +140,19 @@ export default function MonthCalendar() {
     if (!data[monthKey]) data[monthKey] = {};
     if (!data[monthKey][dateStr]) data[monthKey][dateStr] = {};
 
-    if (day.isOff) {
+    if (day.isOff || day.dayShift === 'off') {
       data[monthKey][dateStr]['yotsuhashi'] = 'off';
     } else if (day.dayShift === 'eye') {
       // 眼科の場合、既にクリニック側にパターンがあればそのまま、なければ'am_pm'をセット
       const current = data[monthKey][dateStr]['yotsuhashi'];
       if (!current || current === 'off') {
         data[monthKey][dateStr]['yotsuhashi'] = 'am_pm';
+      }
+    } else if (day.dayShift === 'eye_am') {
+      // 眼科(午前)の場合、午前系パターン以外は'am'に正規化
+      const current = data[monthKey][dateStr]['yotsuhashi'];
+      if (current !== 'am' && current !== 'am_ten') {
+        data[monthKey][dateStr]['yotsuhashi'] = 'am';
       }
     } else {
       // 眼科以外の日勤 or 日勤なし → クリニック側をクリア
@@ -384,7 +390,8 @@ function ShiftEditor({ dateStr, day, onSelect, onClose }: {
   const dayOptions: { value: DayShiftType; label: string }[] = [
     { value: 'eye', label: '眼科' },
     { value: 'facility', label: '施設' },
-    { value: null, label: 'なし' },
+    { value: 'off', label: '休み' },
+    { value: 'eye_am', label: '眼科(午前)' },
   ];
 
   const nightOptions: { value: NightShiftPlace; label: string }[] = [
@@ -439,7 +446,7 @@ function ShiftEditor({ dateStr, day, onSelect, onClose }: {
                         background: opt.value ? SHIFT_COLORS[opt.value] : '#999',
                         color: '#fff',
                       } : {}}
-                      onClick={() => onSelect(dateStr, 'dayShift', opt.value)}
+                      onClick={() => onSelect(dateStr, 'dayShift', isActive ? null : opt.value)}
                     >
                       {opt.label}
                     </button>

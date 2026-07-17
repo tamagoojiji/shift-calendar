@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import type { ClinicShiftPattern, Staff } from '../types';
+import type { ClinicShiftPattern, DayShiftType, Staff } from '../types';
 import { getDaysInMonth, formatDate, WEEKDAY_LABELS, getPrevDate } from '../utils/dateUtils';
 import { loadClinicData, saveClinicData, loadStaff, saveStaff, loadShifts, getDay, saveDay, getSavedMonth, saveCurrentMonth } from '../utils/storage';
 import { generateClinicPDF } from '../utils/pdfExport';
@@ -35,6 +35,10 @@ const BLOCK_CONFIG: Record<string, { line1: string; line2?: string; bg: string; 
   late:     { line1: '11:30', bg: '#F3E5F5', color: '#9C27B0' },
   off:      { line1: '休', bg: '#F5F5F5', color: '#9E9E9E' },
 };
+
+// クリニック側パターン → マイカレンダーの日勤区分への写像
+const dayShiftForClinicPattern = (pattern: ClinicShiftPattern): DayShiftType =>
+  pattern === 'am' || pattern === 'am_ten' ? 'eye_am' : 'eye';
 
 export default function ClinicCalendar() {
   const saved = getSavedMonth();
@@ -82,7 +86,7 @@ export default function ClinicCalendar() {
         day.isOff = true;
         day.dayShift = null;
       } else if (pattern) {
-        day.dayShift = 'eye';
+        day.dayShift = dayShiftForClinicPattern(pattern);
         day.isOff = false;
       }
       saveDay(day);
@@ -104,7 +108,12 @@ export default function ClinicCalendar() {
 
     // マイカレンダーで眼科が入っていない日は休み
     const thisDay = allShifts[dateStr];
-    if (thisDay && thisDay.dayShift !== 'eye' && thisDay.isOff) return 'off';
+    if (thisDay && (thisDay.dayShift === 'off' || (thisDay.dayShift !== 'eye' && thisDay.isOff))) return 'off';
+
+    // マイカレンダーで眼科(午前)なら午前パターンを優先
+    if (thisDay?.dayShift === 'eye_am') {
+      return hasNightShiftPrev ? 'am_ten' : 'am';
+    }
 
     // 木曜・土曜は午前のみ
     if (dow === 4 || dow === 6) {
@@ -152,7 +161,7 @@ export default function ClinicCalendar() {
         day.isOff = true;
         day.dayShift = null;
       } else if (pattern && pattern !== null) {
-        day.dayShift = 'eye';
+        day.dayShift = dayShiftForClinicPattern(pattern);
         day.isOff = false;
       } else {
         continue;

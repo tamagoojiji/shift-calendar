@@ -122,8 +122,11 @@ function DayShiftInput() {
       if (row.shift === 'off') {
         day.isOff = true;
         day.dayShift = null;
-      } else if (row.shift === 'eye_full' || row.shift === 'eye_am') {
+      } else if (row.shift === 'eye_full') {
         day.dayShift = 'eye';
+        day.isOff = false;
+      } else if (row.shift === 'eye_am') {
+        day.dayShift = 'eye_am';
         day.isOff = false;
       } else if (row.shift === 'facility') {
         day.dayShift = 'facility';

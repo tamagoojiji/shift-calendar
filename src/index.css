@@ -473,10 +473,12 @@ body {
   color: #E57373;
 }
 
-.cal-chip-eye {
+.cal-chip-eye,
+.cal-chip-eye_am {
   background: #E8F5E9;
 }
-.cal-chip-eye .cal-chip-text {
+.cal-chip-eye .cal-chip-text,
+.cal-chip-eye_am .cal-chip-text {
   color: #4CAF50;
 }
 

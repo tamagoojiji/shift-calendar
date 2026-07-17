@@ -1,5 +1,5 @@
 // 勤務先
-export type DayShiftType = 'eye' | 'facility' | null; // 眼科 / 施設
+export type DayShiftType = 'eye' | 'facility' | 'off' | 'eye_am' | null; // 眼科 / 施設 / 休み / 眼科(午前)
 export type NightShiftPlace = 'katano' | 'hirakata' | 'kadoma' | 'moriguchi' | 'hazushi' | null; // 交野/枚方/門真/守口/外し
 export type NightShiftTime = '17' | '20' | null;
 
@@ -44,6 +44,7 @@ export interface ClinicMonthData {
 // 施設の色設定
 export const SHIFT_COLORS: Record<string, string> = {
   eye: '#4CAF50',      // 緑（眼科）
+  eye_am: '#4CAF50',   // 緑（眼科・午前）
   facility: '#FB8C00', // オレンジ（施設）
   katano: '#1565C0',   // 青（交野）
   hirakata: '#00838F', // ティール（枚方）
@@ -56,7 +57,9 @@ export const SHIFT_COLORS: Record<string, string> = {
 // 施設の表示名
 export const SHIFT_LABELS: Record<string, string> = {
   eye: '眼科',
+  eye_am: '眼科', // カレンダー上は「眼科」表示
   facility: '施設',
+  off: '休み',
   katano: '交野',
   hirakata: '枚方',
   kadoma: '門真',
