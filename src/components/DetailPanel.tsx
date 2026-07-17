@@ -136,7 +136,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
     shiftSummary.push({ label: '', color: 'transparent' });
   } else {
     if (day.dayShift) {
-      shiftSummary.push({ label: SHIFT_LABELS[day.dayShift], color: SHIFT_COLORS[day.dayShift] });
+      shiftSummary.push({ label: day.dayShift === 'eye_am' ? '眼科(午前)' : SHIFT_LABELS[day.dayShift], color: SHIFT_COLORS[day.dayShift] });
     } else {
       shiftSummary.push({ label: '', color: 'transparent' });
     }
