@@ -48,15 +48,26 @@ export default function MonthCalendar() {
         hazushiDays.push(d);
       }
     }
-    const lines: string[] = [];
+    const lines: string[] = [`${month}月の勤務希望になります。`, 'よろしくお願いします。', ''];
     if (early17.length > 0) {
       lines.push(`17時から勤務可能日：${early17.join('日、')}日`);
     }
     if (hazushiDays.length > 0) {
       lines.push(`夜勤外し日：${hazushiDays.join('日、')}日`);
     }
-    return lines.length > 0 ? lines.join('\n') : '該当する日がありません';
+    if (lines.length === 3) {
+      lines.push('該当する日がありません');
+    }
+    return lines.join('\n');
   };
+
+  const has17Days = useMemo(() => {
+    for (let d = 1; d <= daysInMonth; d++) {
+      const day = allShifts[formatDate(year, month, d)];
+      if (day?.nightTime === '17') return true;
+    }
+    return false;
+  }, [allShifts, year, month, daysInMonth]);
 
   const copyRequest = async () => {
     const text = generateRequest();
@@ -295,6 +306,11 @@ export default function MonthCalendar() {
             <pre style={{ whiteSpace: 'pre-wrap', padding: '16px', fontSize: '14px', lineHeight: '1.8' }}>
               {generateRequest()}
             </pre>
+            {!has17Days && (
+              <div style={{ margin: '0 16px 12px', padding: '10px 12px', background: '#fff3e0', color: '#e65100', borderRadius: '8px', fontSize: '13px' }}>
+                ⚠️ 17時からの勤務はなしでOKですか？
+              </div>
+            )}
             <div style={{ padding: '0 16px 16px', textAlign: 'center' }}>
               <button
                 className="cal-today-btn"
