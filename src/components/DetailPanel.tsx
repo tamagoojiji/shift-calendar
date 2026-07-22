@@ -18,6 +18,7 @@ interface Props {
 export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAddEvent }: Props) {
   const [showAll, setShowAll] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState('');
   const [editTime, setEditTime] = useState('');
   const [editEndTime, setEditEndTime] = useState('');
   const [editContent, setEditContent] = useState('');
@@ -46,6 +47,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
 
   const startEditDetail = (item: DetailItem) => {
     setEditingItemId(item.id);
+    setEditDate(dateStr);
     setEditTime(item.time);
     setEditEndTime(item.endTime || '');
     setEditContent(item.content);
@@ -63,28 +65,46 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
     const endTime = time && editEndTime ? editEndTime : undefined;
 
     const url = editUrl.trim() || undefined;
-    day.details = (day.details || []).map(d =>
-      d.id === editingItemId ? { ...d, time, endTime, content, url } : d
-    );
-    saveDay(day);
-
-    // 既存リマインダーを編集後の状態に同期（終日化したら削除、時刻/内容変更は反映）
+    const newDate = editDate || dateStr;
     const existingReminder = getReminder(editingItemId, dateStr);
-    if (existingReminder) {
-      if (time) {
-        setReminder(editingItemId, dateStr, time, content, existingReminder.timings);
-      } else {
+
+    if (newDate !== dateStr) {
+      // 日付変更: 元の日から削除して移動先の日へ追加
+      const original = (day.details || []).find(d => d.id === editingItemId);
+      day.details = (day.details || []).filter(d => d.id !== editingItemId);
+      saveDay(day);
+      const targetDay = getDay(newDate);
+      targetDay.details = [...(targetDay.details || []), { ...original, id: editingItemId, time, endTime, content, url }];
+      saveDay(targetDay);
+      if (existingReminder) {
         removeReminder(editingItemId, dateStr);
+        if (time) {
+          setReminder(editingItemId, newDate, time, content, existingReminder.timings);
+        }
+      }
+    } else {
+      day.details = (day.details || []).map(d =>
+        d.id === editingItemId ? { ...d, time, endTime, content, url } : d
+      );
+      saveDay(day);
+
+      // 既存リマインダーを編集後の状態に同期（終日化したら削除、時刻/内容変更は反映）
+      if (existingReminder) {
+        if (time) {
+          setReminder(editingItemId, dateStr, time, content, existingReminder.timings);
+        } else {
+          removeReminder(editingItemId, dateStr);
+        }
       }
     }
 
-    if (editUseRange && editRangeEnd && editRangeEnd >= dateStr) {
-      const start = new Date(dateStr);
+    if (editUseRange && editRangeEnd && editRangeEnd >= newDate) {
+      const start = new Date(newDate);
       const end = new Date(editRangeEnd);
       let count = 0;
 
       const addToDate = (ds: string) => {
-        if (ds === dateStr) return;
+        if (ds === newDate) return;
         const targetDay = getDay(ds);
         const item: DetailItem = {
           id: Date.now().toString() + '_e' + count,
@@ -178,6 +198,17 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
           <div key={item.id} className="detail-add-form">
             <div className="detail-time-row">
               <div className="detail-time-field">
+                <label className="detail-time-label">日付</label>
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={e => setEditDate(e.target.value)}
+                  className="detail-input-date"
+                />
+              </div>
+            </div>
+            <div className="detail-time-row">
+              <div className="detail-time-field">
                 <label className="detail-time-label">開始</label>
                 <TimeField value={editTime} onChange={setEditTime} placeholder="時間を入力" />
               </div>
@@ -226,12 +257,12 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
                     ))}
                   </div>
                   <div className="detail-range-dates">
-                    <span className="detail-range-label">{dateStr.slice(5).replace('-', '/')}</span>
+                    <span className="detail-range-label">{(editDate || dateStr).slice(5).replace('-', '/')}</span>
                     <span>〜</span>
                     <input
                       type="date"
                       value={editRangeEnd}
-                      min={dateStr}
+                      min={editDate || dateStr}
                       onChange={e => setEditRangeEnd(e.target.value)}
                       className="detail-input-date"
                     />
