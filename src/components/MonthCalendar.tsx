@@ -154,10 +154,11 @@ export default function MonthCalendar() {
     if (day.isOff || day.dayShift === 'off') {
       data[monthKey][dateStr]['yotsuhashi'] = 'off';
     } else if (day.dayShift === 'eye') {
-      // 眼科の場合、既にクリニック側にパターンがあればそのまま、なければ'am_pm'をセット
+      // 眼科の場合、既にクリニック側にパターンがあればそのまま、なければ曜日既定（木土=午前／他=全日）をセット
       const current = data[monthKey][dateStr]['yotsuhashi'];
       if (!current || current === 'off') {
-        data[monthKey][dateStr]['yotsuhashi'] = 'am_pm';
+        const dow = new Date(dateStr).getDay();
+        data[monthKey][dateStr]['yotsuhashi'] = dow === 4 || dow === 6 ? 'am' : 'am_pm';
       }
     } else if (day.dayShift === 'eye_am') {
       // 眼科(午前)の場合、午前系パターン以外は'am'に正規化
