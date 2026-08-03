@@ -40,6 +40,10 @@ const BLOCK_CONFIG: Record<string, { line1: string; line2?: string; bg: string; 
 const dayShiftForClinicPattern = (pattern: ClinicShiftPattern): DayShiftType =>
   pattern === 'am' || pattern === 'am_ten' ? 'eye_am' : 'eye';
 
+// 前日夜勤の日は10時出勤（全日→全日(10時)、午前→午前(10時)）
+const toTenPattern = (pattern: ClinicShiftPattern): ClinicShiftPattern =>
+  pattern === 'am_pm' ? 'am_pm_ten' : pattern === 'am' ? 'am_ten' : pattern;
+
 export default function ClinicCalendar() {
   const saved = getSavedMonth();
   const [year, setYear] = useState(saved.year);
@@ -96,12 +100,13 @@ export default function ClinicCalendar() {
     refresh();
   };
 
+  // 前日に夜勤が入っているか（＝当日は10時出勤）
+  const hasNightShiftPrev = (dateStr: string): boolean =>
+    allShifts[getPrevDate(dateStr)]?.nightShift != null;
+
   // 四ツ橋の自動判定
   const getYotsuhashiPattern = (dateStr: string): ClinicShiftPattern => {
     const dow = new Date(dateStr).getDay();
-    const prevDateStr = getPrevDate(dateStr);
-    const prevDay = allShifts[prevDateStr];
-    const hasNightShiftPrev = prevDay?.nightShift != null;
 
     // 日曜・祝日は休み
     if (dow === 0 || holidays.has(dateStr)) return 'off';
@@ -110,24 +115,20 @@ export default function ClinicCalendar() {
     const thisDay = allShifts[dateStr];
     if (thisDay && (thisDay.dayShift === 'off' || (thisDay.dayShift !== 'eye' && thisDay.isOff))) return 'off';
 
-    // マイカレンダーで眼科(午前)なら午前パターンを優先
-    if (thisDay?.dayShift === 'eye_am') {
-      return hasNightShiftPrev ? 'am_ten' : 'am';
-    }
+    // 眼科(午前)指定・木曜・土曜は午前のみ、それ以外は全日
+    const base: ClinicShiftPattern =
+      thisDay?.dayShift === 'eye_am' || dow === 4 || dow === 6 ? 'am' : 'am_pm';
 
-    // 木曜・土曜は午前のみ
-    if (dow === 4 || dow === 6) {
-      return hasNightShiftPrev ? 'am_ten' : 'am';
-    }
-
-    // 月火水金 → 全日（前日夜勤なら10時〜付き）
-    return hasNightShiftPrev ? 'am_pm_ten' : 'am_pm';
+    return hasNightShiftPrev(dateStr) ? toTenPattern(base) : base;
   };
 
   const getPattern = (date: string, staffId: string): ClinicShiftPattern => {
     // 四ツ橋は自動判定（手動上書き可能）
     const manual = clinicData[monthKey]?.[date]?.[staffId];
-    if (manual !== undefined) return manual;
+    if (manual !== undefined) {
+      // 前日夜勤の日は保存済みパターンでも10時出勤に揃える
+      return staffId === 'yotsuhashi' && hasNightShiftPrev(date) ? toTenPattern(manual) : manual;
+    }
     if (staffId === 'yotsuhashi') return getYotsuhashiPattern(date);
     return null;
   };
