@@ -5,7 +5,37 @@ const STORAGE_KEYS = {
   shifts: 'shift_calendar_data',
   clinic: 'shift_clinic_data',
   staff: 'shift_staff_list',
+  friend: 'friend_events_data',
 };
+
+export type SyncType = 'shifts' | 'clinic' | 'staff' | 'friend';
+
+const UPDATED_AT_KEY = 'shift_sync_updated_at';
+
+// type別の最終更新時刻（ローカル）
+export function getLocalUpdatedAt(type: SyncType): number {
+  try {
+    const raw = localStorage.getItem(UPDATED_AT_KEY);
+    if (!raw) return 0;
+    const map = JSON.parse(raw) as Record<string, unknown>;
+    const v = map[type];
+    return typeof v === 'number' ? v : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function setLocalUpdatedAt(type: SyncType, ts: number = Date.now()): void {
+  let map: Record<string, number> = {};
+  try {
+    const raw = localStorage.getItem(UPDATED_AT_KEY);
+    if (raw) map = JSON.parse(raw) || {};
+  } catch {
+    map = {};
+  }
+  map[type] = ts;
+  localStorage.setItem(UPDATED_AT_KEY, JSON.stringify(map));
+}
 
 // 現在ログイン中のユーザーID
 let currentUid: string | null = null;
@@ -14,26 +44,58 @@ export function setCurrentUid(uid: string | null) {
   currentUid = uid;
 }
 
-// Firestoreへの非同期保存（バックグラウンド）
-function syncToFirestore(type: 'shifts' | 'clinic' | 'staff' | 'friend', data: unknown) {
-  if (!currentUid) return;
+const syncTimers: Partial<Record<SyncType, ReturnType<typeof setTimeout>>> = {};
+const pendingSyncData: Partial<Record<SyncType, unknown>> = {};
+
+async function runSync(type: SyncType, data: unknown) {
   const uid = currentUid;
+  if (!uid) return;
+  try {
+    // undefinedフィールドを除去（Firestoreはundefinedを受け付けない）
+    const clean = JSON.parse(JSON.stringify(data));
+    const updatedAt = getLocalUpdatedAt(type);
+    if (type === 'shifts') await saveShiftsToFirestore(uid, clean as Record<string, DayData>, updatedAt);
+    else if (type === 'clinic') await saveClinicToFirestore(uid, clean as Record<string, ClinicMonthData>, updatedAt);
+    else if (type === 'staff') await saveStaffToFirestore(uid, clean as Staff[], updatedAt);
+    else if (type === 'friend') await saveFriendToFirestore(uid, clean as Record<string, DetailItem[]>, updatedAt);
+  } catch (err) {
+    console.error('Firestore sync error:', err);
+  }
+}
+
+// Firestoreへの非同期保存（バックグラウンド）
+function syncToFirestore(type: SyncType, data: unknown) {
+  if (!currentUid) return;
 
   // デバウンス用
   if (syncTimers[type]) clearTimeout(syncTimers[type]);
-  syncTimers[type] = setTimeout(async () => {
-    try {
-      if (type === 'shifts') await saveShiftsToFirestore(uid, data as Record<string, DayData>);
-      else if (type === 'clinic') await saveClinicToFirestore(uid, data as Record<string, ClinicMonthData>);
-      else if (type === 'staff') await saveStaffToFirestore(uid, data as Staff[]);
-      else if (type === 'friend') await saveFriendToFirestore(uid, data as Record<string, DetailItem[]>);
-    } catch (err) {
-      console.error('Firestore sync error:', err);
-    }
+  pendingSyncData[type] = data;
+  syncTimers[type] = setTimeout(() => {
+    delete syncTimers[type];
+    const pending = pendingSyncData[type];
+    delete pendingSyncData[type];
+    void runSync(type, pending);
   }, 2000); // 2秒デバウンス
 }
 
-const syncTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+// 保留中のデバウンスを打ち切って即座に同期
+export function flushPendingSync(): void {
+  (Object.keys(syncTimers) as SyncType[]).forEach((type) => {
+    const timer = syncTimers[type];
+    if (timer) clearTimeout(timer);
+    delete syncTimers[type];
+    const pending = pendingSyncData[type];
+    delete pendingSyncData[type];
+    if (pending !== undefined) void runSync(type, pending);
+  });
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) flushPendingSync();
+});
+window.addEventListener('pagehide', () => {
+  flushPendingSync();
+});
 
 // シフトデータ
 export function loadShifts(): Record<string, DayData> {
@@ -47,6 +109,7 @@ export function loadShifts(): Record<string, DayData> {
 
 export function saveShifts(data: Record<string, DayData>): void {
   localStorage.setItem(STORAGE_KEYS.shifts, JSON.stringify(data));
+  setLocalUpdatedAt('shifts');
   syncToFirestore('shifts', data);
 }
 
@@ -80,6 +143,7 @@ export function loadClinicData(): Record<string, ClinicMonthData> {
 
 export function saveClinicData(data: Record<string, ClinicMonthData>): void {
   localStorage.setItem(STORAGE_KEYS.clinic, JSON.stringify(data));
+  setLocalUpdatedAt('clinic');
   syncToFirestore('clinic', data);
 }
 
@@ -95,6 +159,7 @@ export function loadStaff(): Staff[] {
 
 export function saveStaff(staff: Staff[]): void {
   localStorage.setItem(STORAGE_KEYS.staff, JSON.stringify(staff));
+  setLocalUpdatedAt('staff');
   syncToFirestore('staff', staff);
 }
 
@@ -131,7 +196,7 @@ export function removeDeletedEvent(index: number): void {
 // 友達の予定（個人イベントとは独立）
 export function loadFriendEvents(): Record<string, DetailItem[]> {
   try {
-    const raw = localStorage.getItem('friend_events_data');
+    const raw = localStorage.getItem(STORAGE_KEYS.friend);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -139,7 +204,8 @@ export function loadFriendEvents(): Record<string, DetailItem[]> {
 }
 
 export function saveFriendEvents(data: Record<string, DetailItem[]>): void {
-  localStorage.setItem('friend_events_data', JSON.stringify(data));
+  localStorage.setItem(STORAGE_KEYS.friend, JSON.stringify(data));
+  setLocalUpdatedAt('friend');
   syncToFirestore('friend', data);
 }
 
@@ -171,18 +237,7 @@ export function saveCurrentMonth(year: number, month: number): void {
   localStorage.setItem('shift_current_month', JSON.stringify({ year, month }));
 }
 
-// Firestoreからローカルにデータ復元
-export function restoreToLocal(shifts: Record<string, DayData>, clinic: Record<string, ClinicMonthData>, staff: Staff[], friend: Record<string, DetailItem[]>) {
-  if (Object.keys(shifts).length > 0) {
-    localStorage.setItem(STORAGE_KEYS.shifts, JSON.stringify(shifts));
-  }
-  if (Object.keys(clinic).length > 0) {
-    localStorage.setItem(STORAGE_KEYS.clinic, JSON.stringify(clinic));
-  }
-  if (staff.length > 0) {
-    localStorage.setItem(STORAGE_KEYS.staff, JSON.stringify(staff));
-  }
-  if (Object.keys(friend).length > 0) {
-    localStorage.setItem('friend_events_data', JSON.stringify(friend));
-  }
+// Firestoreからローカルにデータ復元（type単位）
+export function restoreToLocal(type: SyncType, data: unknown): void {
+  localStorage.setItem(STORAGE_KEYS[type], JSON.stringify(data));
 }

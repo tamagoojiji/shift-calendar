@@ -4,9 +4,45 @@ import MonthCalendar from './components/MonthCalendar';
 import ClinicCalendar from './components/ClinicCalendar';
 import FriendCalendar from './components/FriendCalendar';
 import Settings from './components/Settings';
-import { onAuthChange, loadShiftsFromFirestore, loadClinicFromFirestore, loadStaffFromFirestore, loadFriendFromFirestore } from './utils/firebase';
-import { setCurrentUid, restoreToLocal } from './utils/storage';
+import {
+  onAuthChange,
+  loadShiftsFromFirestore, loadClinicFromFirestore, loadStaffFromFirestore, loadFriendFromFirestore,
+  saveShiftsToFirestore, saveClinicToFirestore, saveStaffToFirestore, saveFriendToFirestore,
+} from './utils/firebase';
+import type { SyncType } from './utils/storage';
+import {
+  setCurrentUid, restoreToLocal, getLocalUpdatedAt, setLocalUpdatedAt,
+  loadShifts, loadClinicData, loadStaff, loadFriendEvents,
+} from './utils/storage';
 import { registerServiceWorker, checkAndFireReminders, requestNotificationPermission } from './utils/reminder';
+
+// type単位でローカル/リモートの新しい方を採用する
+async function reconcile<T>(
+  uid: string,
+  type: SyncType,
+  remote: { data: T; updatedAt: number },
+  remoteHasData: boolean,
+  loadLocal: () => T,
+  push: (uid: string, data: T, updatedAt: number) => Promise<void>,
+): Promise<void> {
+  const localUpdatedAt = getLocalUpdatedAt(type);
+
+  if (remote.updatedAt > localUpdatedAt) {
+    restoreToLocal(type, remote.data);
+    setLocalUpdatedAt(type, remote.updatedAt);
+    return;
+  }
+
+  if (localUpdatedAt > remote.updatedAt) {
+    await push(uid, loadLocal(), localUpdatedAt);
+    return;
+  }
+
+  // 両方0（移行期・旧データ）はリモートにデータがあれば従来通り復元
+  if (localUpdatedAt === 0 && remoteHasData) {
+    restoreToLocal(type, remote.data);
+  }
+}
 
 export default function App() {
   const [tab, setTab] = useState<TabType>('calendar');
@@ -25,13 +61,15 @@ export default function App() {
           const shifts = await loadShiftsFromFirestore(u.uid);
           const clinic = await loadClinicFromFirestore(u.uid);
           const staff = await loadStaffFromFirestore(u.uid);
-          let friend: Record<string, DetailItem[]> = {};
+          await reconcile(u.uid, 'shifts', shifts, Object.keys(shifts.data).length > 0, loadShifts, saveShiftsToFirestore);
+          await reconcile(u.uid, 'clinic', clinic, Object.keys(clinic.data).length > 0, loadClinicData, saveClinicToFirestore);
+          await reconcile(u.uid, 'staff', staff, staff.data.length > 0, loadStaff, saveStaffToFirestore);
           try {
-            friend = await loadFriendFromFirestore(u.uid);
+            const friend: { data: Record<string, DetailItem[]>; updatedAt: number } = await loadFriendFromFirestore(u.uid);
+            await reconcile(u.uid, 'friend', friend, Object.keys(friend.data).length > 0, loadFriendEvents, saveFriendToFirestore);
           } catch (err) {
             console.error('Firestore friend restore error:', err);
           }
-          restoreToLocal(shifts, clinic, staff, friend);
           // Firestore復元後にコンポーネントを再マウントさせる
           setDataVersion(v => v + 1);
         } catch (err) {

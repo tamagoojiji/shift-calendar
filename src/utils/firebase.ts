@@ -37,55 +37,63 @@ function getUserDocRef(uid: string, docName: string) {
   return doc(db, 'users', uid, 'data', docName);
 }
 
-// シフトデータ
-export async function saveShiftsToFirestore(uid: string, data: Record<string, DayData>): Promise<void> {
-  await setDoc(getUserDocRef(uid, 'shifts'), { data }, { merge: true });
+function readUpdatedAt(raw: unknown): number {
+  return typeof raw === 'number' ? raw : 0;
 }
 
-export async function loadShiftsFromFirestore(uid: string): Promise<Record<string, DayData>> {
+// シフトデータ
+export async function saveShiftsToFirestore(uid: string, data: Record<string, DayData>, updatedAt: number = Date.now()): Promise<void> {
+  await setDoc(getUserDocRef(uid, 'shifts'), { data, updatedAt }, { merge: true });
+}
+
+export async function loadShiftsFromFirestore(uid: string): Promise<{ data: Record<string, DayData>; updatedAt: number }> {
   const snap = await getDoc(getUserDocRef(uid, 'shifts'));
   if (snap.exists()) {
-    return snap.data().data || {};
+    const d = snap.data();
+    return { data: d.data || {}, updatedAt: readUpdatedAt(d.updatedAt) };
   }
-  return {};
+  return { data: {}, updatedAt: 0 };
 }
 
 // 眼科カレンダー
-export async function saveClinicToFirestore(uid: string, data: Record<string, ClinicMonthData>): Promise<void> {
-  await setDoc(getUserDocRef(uid, 'clinic'), { data }, { merge: true });
+export async function saveClinicToFirestore(uid: string, data: Record<string, ClinicMonthData>, updatedAt: number = Date.now()): Promise<void> {
+  await setDoc(getUserDocRef(uid, 'clinic'), { data, updatedAt }, { merge: true });
 }
 
-export async function loadClinicFromFirestore(uid: string): Promise<Record<string, ClinicMonthData>> {
+export async function loadClinicFromFirestore(uid: string): Promise<{ data: Record<string, ClinicMonthData>; updatedAt: number }> {
   const snap = await getDoc(getUserDocRef(uid, 'clinic'));
   if (snap.exists()) {
-    return snap.data().data || {};
+    const d = snap.data();
+    return { data: d.data || {}, updatedAt: readUpdatedAt(d.updatedAt) };
   }
-  return {};
+  return { data: {}, updatedAt: 0 };
 }
 
 // スタッフ
-export async function saveStaffToFirestore(uid: string, staff: Staff[]): Promise<void> {
-  await setDoc(getUserDocRef(uid, 'staff'), { data: staff });
+export async function saveStaffToFirestore(uid: string, staff: Staff[], updatedAt: number = Date.now()): Promise<void> {
+  await setDoc(getUserDocRef(uid, 'staff'), { data: staff, updatedAt });
 }
 
-export async function loadStaffFromFirestore(uid: string): Promise<Staff[]> {
+export async function loadStaffFromFirestore(uid: string): Promise<{ data: Staff[]; updatedAt: number }> {
   const snap = await getDoc(getUserDocRef(uid, 'staff'));
   if (snap.exists()) {
-    return snap.data().data || [{ id: 'yotsuhashi', name: '四ツ橋' }];
+    const d = snap.data();
+    return { data: d.data || [{ id: 'yotsuhashi', name: '四ツ橋' }], updatedAt: readUpdatedAt(d.updatedAt) };
   }
-  return [{ id: 'yotsuhashi', name: '四ツ橋' }];
+  return { data: [{ id: 'yotsuhashi', name: '四ツ橋' }], updatedAt: 0 };
 }
 
 // 友達の予定
-export async function saveFriendToFirestore(uid: string, data: Record<string, DetailItem[]>): Promise<void> {
-  await setDoc(getUserDocRef(uid, 'friend'), { data }, { merge: true });
+export async function saveFriendToFirestore(uid: string, data: Record<string, DetailItem[]>, updatedAt: number = Date.now()): Promise<void> {
+  await setDoc(getUserDocRef(uid, 'friend'), { data, updatedAt }, { merge: true });
 }
 
-export async function loadFriendFromFirestore(uid: string): Promise<Record<string, DetailItem[]>> {
+export async function loadFriendFromFirestore(uid: string): Promise<{ data: Record<string, DetailItem[]>; updatedAt: number }> {
   const snap = await getDoc(getUserDocRef(uid, 'friend'));
   if (snap.exists()) {
-    return snap.data().data || {};
+    const d = snap.data();
+    return { data: d.data || {}, updatedAt: readUpdatedAt(d.updatedAt) };
   }
-  return {};
+  return { data: {}, updatedAt: 0 };
 }
 
