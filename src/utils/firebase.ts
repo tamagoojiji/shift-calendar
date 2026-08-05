@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence, type User } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
-import type { DayData, ClinicMonthData, Staff } from '../types';
+import type { DayData, ClinicMonthData, Staff, DetailItem } from '../types';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDP3vq2d3nVqzXhjoozal5Qh5WPK6o_8oM",
@@ -74,5 +74,18 @@ export async function loadStaffFromFirestore(uid: string): Promise<Staff[]> {
     return snap.data().data || [{ id: 'yotsuhashi', name: '四ツ橋' }];
   }
   return [{ id: 'yotsuhashi', name: '四ツ橋' }];
+}
+
+// 友達の予定
+export async function saveFriendToFirestore(uid: string, data: Record<string, DetailItem[]>): Promise<void> {
+  await setDoc(getUserDocRef(uid, 'friend'), { data }, { merge: true });
+}
+
+export async function loadFriendFromFirestore(uid: string): Promise<Record<string, DetailItem[]>> {
+  const snap = await getDoc(getUserDocRef(uid, 'friend'));
+  if (snap.exists()) {
+    return snap.data().data || {};
+  }
+  return {};
 }
 

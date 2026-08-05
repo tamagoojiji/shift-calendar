@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { SHIFT_COLORS } from '../types';
 import { logout, loginWithGoogle, auth } from '../utils/firebase';
-import { loadDeletedEvents, removeDeletedEvent, getDay, saveDay, getParkDayEvents, saveParkDayEvents } from '../utils/storage';
+import { loadDeletedEvents, removeDeletedEvent, getDay, saveDay, getFriendDayEvents, saveFriendDayEvents } from '../utils/storage';
 import type { DeletedEvent } from '../utils/storage';
 
+// 旧実装の source:'park' レコードは表示・復元の対象外
+function loadValidDeletedEvents(): DeletedEvent[] {
+  return loadDeletedEvents().filter(e => e.source === 'personal' || e.source === 'friend');
+}
+
 export default function Settings() {
-  const [deletedEvents, setDeletedEvents] = useState<DeletedEvent[]>(loadDeletedEvents);
+  const [deletedEvents, setDeletedEvents] = useState<DeletedEvent[]>(loadValidDeletedEvents);
   const user = auth.currentUser;
 
   const restoreEvent = (index: number) => {
@@ -15,11 +20,13 @@ export default function Settings() {
       day.details = [...(day.details || []), evt.item];
       saveDay(day);
     } else {
-      const events = getParkDayEvents(evt.date);
-      saveParkDayEvents(evt.date, [...events, evt.item]);
+      const events = getFriendDayEvents(evt.date);
+      saveFriendDayEvents(evt.date, [...events, evt.item]);
     }
-    removeDeletedEvent(index);
-    setDeletedEvents(loadDeletedEvents());
+    // フィルタでindexがずれるため、保存済みリスト側の位置をdeletedAt+idで特定
+    const rawIndex = loadDeletedEvents().findIndex(e => e.deletedAt === evt.deletedAt && e.item.id === evt.item.id);
+    if (rawIndex >= 0) removeDeletedEvent(rawIndex);
+    setDeletedEvents(loadValidDeletedEvents());
   };
 
   const handleLogout = async () => {
@@ -89,7 +96,7 @@ export default function Settings() {
               <div key={i} className="deleted-event-item">
                 <div className="deleted-event-info">
                   <span className="deleted-event-date">{evt.date}</span>
-                  <span className="deleted-event-source">{evt.source === 'personal' ? '個人' : 'パーク'}</span>
+                  <span className="deleted-event-source">{evt.source === 'personal' ? '個人' : '友達'}</span>
                   <span className="deleted-event-content">{evt.item.time ? `${evt.item.time} ` : ''}{evt.item.content}</span>
                 </div>
                 <button className="deleted-event-restore" onClick={() => restoreEvent(i)}>復元</button>

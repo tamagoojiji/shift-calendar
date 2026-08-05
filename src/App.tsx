@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import type { TabType } from './types';
+import type { TabType, DetailItem } from './types';
 import MonthCalendar from './components/MonthCalendar';
 import ClinicCalendar from './components/ClinicCalendar';
-import ParkCalendar from './components/ParkCalendar';
-import ShiftImport from './components/ShiftImport';
+import FriendCalendar from './components/FriendCalendar';
 import Settings from './components/Settings';
-import { onAuthChange, loadShiftsFromFirestore, loadClinicFromFirestore, loadStaffFromFirestore } from './utils/firebase';
+import { onAuthChange, loadShiftsFromFirestore, loadClinicFromFirestore, loadStaffFromFirestore, loadFriendFromFirestore } from './utils/firebase';
 import { setCurrentUid, restoreToLocal } from './utils/storage';
 import { registerServiceWorker, checkAndFireReminders, requestNotificationPermission } from './utils/reminder';
 
@@ -26,7 +25,13 @@ export default function App() {
           const shifts = await loadShiftsFromFirestore(u.uid);
           const clinic = await loadClinicFromFirestore(u.uid);
           const staff = await loadStaffFromFirestore(u.uid);
-          restoreToLocal(shifts, clinic, staff);
+          let friend: Record<string, DetailItem[]> = {};
+          try {
+            friend = await loadFriendFromFirestore(u.uid);
+          } catch (err) {
+            console.error('Firestore friend restore error:', err);
+          }
+          restoreToLocal(shifts, clinic, staff, friend);
           // Firestore復元後にコンポーネントを再マウントさせる
           setDataVersion(v => v + 1);
         } catch (err) {
@@ -64,8 +69,7 @@ export default function App() {
       <div className="app-content">
         {tab === 'calendar' && <MonthCalendar key={dataVersion} />}
         {tab === 'clinic' && <ClinicCalendar key={dataVersion} />}
-        {tab === 'park' && <ParkCalendar key={dataVersion} />}
-        {tab === 'import' && <ShiftImport key={dataVersion} />}
+        {tab === 'friend' && <FriendCalendar key={dataVersion} />}
         {tab === 'settings' && <Settings />}
       </div>
 
@@ -85,18 +89,11 @@ export default function App() {
           <span className="nav-label">眼科</span>
         </button>
         <button
-          className={`nav-item ${tab === 'park' ? 'active' : ''}`}
-          onClick={() => setTab('park')}
+          className={`nav-item ${tab === 'friend' ? 'active' : ''}`}
+          onClick={() => setTab('friend')}
         >
-          <span className="nav-icon">🎢</span>
-          <span className="nav-label">パーク</span>
-        </button>
-        <button
-          className={`nav-item ${tab === 'import' ? 'active' : ''}`}
-          onClick={() => setTab('import')}
-        >
-          <span className="nav-icon">📷</span>
-          <span className="nav-label">読込</span>
+          <span className="nav-icon">👥</span>
+          <span className="nav-label">友達</span>
         </button>
         <button
           className={`nav-item ${tab === 'settings' ? 'active' : ''}`}

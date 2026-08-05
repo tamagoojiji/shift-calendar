@@ -1,5 +1,5 @@
 import type { DayData, ClinicMonthData, Staff, DetailItem } from '../types';
-import { saveShiftsToFirestore, saveClinicToFirestore, saveStaffToFirestore } from './firebase';
+import { saveShiftsToFirestore, saveClinicToFirestore, saveStaffToFirestore, saveFriendToFirestore } from './firebase';
 
 const STORAGE_KEYS = {
   shifts: 'shift_calendar_data',
@@ -15,7 +15,7 @@ export function setCurrentUid(uid: string | null) {
 }
 
 // Firestoreへの非同期保存（バックグラウンド）
-function syncToFirestore(type: 'shifts' | 'clinic' | 'staff', data: unknown) {
+function syncToFirestore(type: 'shifts' | 'clinic' | 'staff' | 'friend', data: unknown) {
   if (!currentUid) return;
   const uid = currentUid;
 
@@ -26,6 +26,7 @@ function syncToFirestore(type: 'shifts' | 'clinic' | 'staff', data: unknown) {
       if (type === 'shifts') await saveShiftsToFirestore(uid, data as Record<string, DayData>);
       else if (type === 'clinic') await saveClinicToFirestore(uid, data as Record<string, ClinicMonthData>);
       else if (type === 'staff') await saveStaffToFirestore(uid, data as Staff[]);
+      else if (type === 'friend') await saveFriendToFirestore(uid, data as Record<string, DetailItem[]>);
     } catch (err) {
       console.error('Firestore sync error:', err);
     }
@@ -101,7 +102,7 @@ export function saveStaff(staff: Staff[]): void {
 export interface DeletedEvent {
   item: DetailItem;
   date: string;
-  source: 'personal' | 'park';
+  source: 'personal' | 'friend';
   deletedAt: number;
 }
 
@@ -114,7 +115,7 @@ export function loadDeletedEvents(): DeletedEvent[] {
   }
 }
 
-export function addDeletedEvent(item: DetailItem, date: string, source: 'personal' | 'park'): void {
+export function addDeletedEvent(item: DetailItem, date: string, source: 'personal' | 'friend'): void {
   const list = loadDeletedEvents();
   list.unshift({ item, date, source, deletedAt: Date.now() });
   // 直近10件だけ保持
@@ -127,29 +128,30 @@ export function removeDeletedEvent(index: number): void {
   localStorage.setItem('deleted_events', JSON.stringify(list));
 }
 
-// パークイベント（個人イベントとは独立）
-export function loadParkEvents(): Record<string, DetailItem[]> {
+// 友達の予定（個人イベントとは独立）
+export function loadFriendEvents(): Record<string, DetailItem[]> {
   try {
-    const raw = localStorage.getItem('park_events_data');
+    const raw = localStorage.getItem('friend_events_data');
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
   }
 }
 
-export function saveParkEvents(data: Record<string, DetailItem[]>): void {
-  localStorage.setItem('park_events_data', JSON.stringify(data));
+export function saveFriendEvents(data: Record<string, DetailItem[]>): void {
+  localStorage.setItem('friend_events_data', JSON.stringify(data));
+  syncToFirestore('friend', data);
 }
 
-export function getParkDayEvents(date: string): DetailItem[] {
-  const all = loadParkEvents();
+export function getFriendDayEvents(date: string): DetailItem[] {
+  const all = loadFriendEvents();
   return all[date] || [];
 }
 
-export function saveParkDayEvents(date: string, events: DetailItem[]): void {
-  const all = loadParkEvents();
+export function saveFriendDayEvents(date: string, events: DetailItem[]): void {
+  const all = loadFriendEvents();
   all[date] = events;
-  saveParkEvents(all);
+  saveFriendEvents(all);
 }
 
 // 共通の表示月（全タブで共有）
@@ -170,7 +172,7 @@ export function saveCurrentMonth(year: number, month: number): void {
 }
 
 // Firestoreからローカルにデータ復元
-export function restoreToLocal(shifts: Record<string, DayData>, clinic: Record<string, ClinicMonthData>, staff: Staff[]) {
+export function restoreToLocal(shifts: Record<string, DayData>, clinic: Record<string, ClinicMonthData>, staff: Staff[], friend: Record<string, DetailItem[]>) {
   if (Object.keys(shifts).length > 0) {
     localStorage.setItem(STORAGE_KEYS.shifts, JSON.stringify(shifts));
   }
@@ -179,5 +181,8 @@ export function restoreToLocal(shifts: Record<string, DayData>, clinic: Record<s
   }
   if (staff.length > 0) {
     localStorage.setItem(STORAGE_KEYS.staff, JSON.stringify(staff));
+  }
+  if (Object.keys(friend).length > 0) {
+    localStorage.setItem('friend_events_data', JSON.stringify(friend));
   }
 }

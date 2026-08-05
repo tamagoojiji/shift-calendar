@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import type { DetailItem } from '../types';
-import { getDay, saveDay } from '../utils/storage';
+import { getDay, saveDay, getFriendDayEvents, saveFriendDayEvents } from '../utils/storage';
 import { analyzeEventImage } from '../utils/gemini';
 import { setReminder, requestNotificationPermission, TIMING_LABELS } from '../utils/reminder';
 import type { ReminderTiming } from '../utils/reminder';
@@ -10,6 +10,7 @@ interface Props {
   dateStr: string;
   onSave: () => void;
   onClose: () => void;
+  target?: 'personal' | 'friend';
 }
 
 interface PendingEvent {
@@ -21,7 +22,7 @@ interface PendingEvent {
   checked: boolean;
 }
 
-export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
+export default function EventAddScreen({ dateStr, onSave, onClose, target = 'personal' }: Props) {
   const [date, setDate] = useState(dateStr);
   const [time, setTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -52,6 +53,17 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
     }
   };
 
+  // 保存先の切り替え（個人カレンダー / 友達の予定）
+  const addItemToDate = (ds: string, item: DetailItem) => {
+    if (target === 'friend') {
+      saveFriendDayEvents(ds, [...getFriendDayEvents(ds), item]);
+    } else {
+      const targetDay = getDay(ds);
+      targetDay.details = [...(targetDay.details || []), item];
+      saveDay(targetDay);
+    }
+  };
+
   const handleSave = () => {
     if (!content.trim()) return;
     const trimContent = content.trim();
@@ -63,7 +75,6 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
       let count = 0;
 
       const addToDate = (ds: string) => {
-        const targetDay = getDay(ds);
         const item: DetailItem = {
           id: Date.now().toString() + '_' + count,
           time,
@@ -71,9 +82,9 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
           content: trimContent,
           ...(trimUrl && { url: trimUrl }),
         };
-        targetDay.details = [...(targetDay.details || []), item];
-        saveDay(targetDay);
-        if (time && reminderTimings.length > 0) {
+        addItemToDate(ds, item);
+        // 友達の予定はアラーム対象外
+        if (target !== 'friend' && time && reminderTimings.length > 0) {
           setReminder(item.id, ds, time, trimContent, reminderTimings);
         }
         count++;
@@ -101,7 +112,6 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
         }
       }
     } else {
-      const targetDay = getDay(date);
       const item: DetailItem = {
         id: Date.now().toString(),
         time,
@@ -109,9 +119,9 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
         content: trimContent,
         ...(trimUrl && { url: trimUrl }),
       };
-      targetDay.details = [...(targetDay.details || []), item];
-      saveDay(targetDay);
-      if (time && reminderTimings.length > 0) {
+      addItemToDate(date, item);
+      // 友達の予定はアラーム対象外
+      if (target !== 'friend' && time && reminderTimings.length > 0) {
         setReminder(item.id, date, time, trimContent, reminderTimings);
       }
     }
@@ -131,15 +141,13 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
       return;
     }
     targets.forEach((evt, i) => {
-      const targetDay = getDay(evt.date);
       const item: DetailItem = {
         id: Date.now().toString() + '_b' + i,
         time: evt.time,
         content: evt.content.trim(),
         ...(evt.url.trim() && { url: evt.url.trim() }),
       };
-      targetDay.details = [...(targetDay.details || []), item];
-      saveDay(targetDay);
+      addItemToDate(evt.date, item);
     });
     setPendingEvents(null);
     onSave();
@@ -292,8 +300,8 @@ export default function EventAddScreen({ dateStr, onSave, onClose }: Props) {
           />
         </div>
 
-        {/* アラーム */}
-        {time && (
+        {/* アラーム（友達の予定では非表示） */}
+        {time && target !== 'friend' && (
           <div className="event-add-field">
             <label className="event-add-label">🔔 アラーム</label>
             <div className="reminder-timing-picker">

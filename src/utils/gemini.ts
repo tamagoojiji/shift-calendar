@@ -7,7 +7,7 @@ const API_BASE = 'https://print-to-calendar.tamago-ai-world.com';
 // ※公開SPAのためこの値はバンドルに載る（＝暗号学的な秘密ではない）。損害上限は$10予算ガードが担保。
 const SHIFT_TOKEN = '6891a2835ad368580a57b7607f640b59349a444f63a5ec4b';
 
-async function callAnalyzeApi<T>(kind: 'shift' | 'event', imageBase64: string, mimeType: string): Promise<T> {
+async function callAnalyzeApi<T>(kind: 'event', imageBase64: string, mimeType: string): Promise<T> {
   const res = await fetch(`${API_BASE}/api/shift-analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Shift-Token': SHIFT_TOKEN },
@@ -19,16 +19,6 @@ async function callAnalyzeApi<T>(kind: 'shift' | 'event', imageBase64: string, m
     throw new Error(json?.error || `解析サーバーエラー (HTTP ${res.status})`);
   }
   return json.result;
-}
-
-// シフト表解析
-export async function analyzeShiftImage(imageBase64: string, mimeType: string) {
-  return callAnalyzeApi<{
-    facility: 'katano' | 'hirakata' | 'kadoma' | 'moriguchi';
-    year: number;
-    month: number;
-    shifts: { day: number; place: 'katano' | 'hirakata' | 'kadoma' | 'moriguchi'; time: '17' | '20' }[];
-  }>('shift', imageBase64, mimeType);
 }
 
 // イベント解析
