@@ -8,7 +8,7 @@ import EventAddScreen from './EventAddScreen';
 import TimeField from './TimeField';
 import { useSwipe } from '../hooks/useSwipe';
 
-const FRIEND_COLOR = '#9C27B0';
+const FRIEND_COLOR = FRIEND_EVENT_COLORS[0];
 
 export default function FriendCalendar() {
   const today = getToday();

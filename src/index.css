@@ -1626,7 +1626,7 @@ body {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  border: 2px solid transparent;
+  border: 2px solid #ccc;
   padding: 0;
   cursor: pointer;
 }
