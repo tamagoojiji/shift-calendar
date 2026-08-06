@@ -1,5 +1,5 @@
 import type { DayData, ClinicMonthData, Staff, DetailItem } from '../types';
-import { saveShiftsToFirestore, saveClinicToFirestore, saveStaffToFirestore, saveFriendToFirestore } from './firebase';
+import { saveShiftsToFirestore, saveClinicToFirestore, saveStaffToFirestore, saveFriendToFirestore, saveFriendShareToFirestore } from './firebase';
 
 const STORAGE_KEYS = {
   shifts: 'shift_calendar_data',
@@ -44,20 +44,36 @@ export function setCurrentUid(uid: string | null) {
   currentUid = uid;
 }
 
+// 友達の予定の共有ID（設定されていれば共有モード）
+const FRIEND_SHARE_ID_KEY = 'friend_share_id';
+
+export function getFriendShareId(): string | null {
+  return localStorage.getItem(FRIEND_SHARE_ID_KEY);
+}
+
+export function setFriendShareId(id: string | null): void {
+  if (id) localStorage.setItem(FRIEND_SHARE_ID_KEY, id);
+  else localStorage.removeItem(FRIEND_SHARE_ID_KEY);
+}
+
 const syncTimers: Partial<Record<SyncType, ReturnType<typeof setTimeout>>> = {};
 const pendingSyncData: Partial<Record<SyncType, unknown>> = {};
 
 async function runSync(type: SyncType, data: unknown) {
   const uid = currentUid;
-  if (!uid) return;
+  const shareId = type === 'friend' ? getFriendShareId() : null;
+  if (!uid && !shareId) return;
   try {
     // undefinedフィールドを除去（Firestoreはundefinedを受け付けない）
     const clean = JSON.parse(JSON.stringify(data));
     const updatedAt = getLocalUpdatedAt(type);
-    if (type === 'shifts') await saveShiftsToFirestore(uid, clean as Record<string, DayData>, updatedAt);
-    else if (type === 'clinic') await saveClinicToFirestore(uid, clean as Record<string, ClinicMonthData>, updatedAt);
-    else if (type === 'staff') await saveStaffToFirestore(uid, clean as Staff[], updatedAt);
-    else if (type === 'friend') await saveFriendToFirestore(uid, clean as Record<string, DetailItem[]>, updatedAt);
+    if (type === 'shifts' && uid) await saveShiftsToFirestore(uid, clean as Record<string, DayData>, updatedAt);
+    else if (type === 'clinic' && uid) await saveClinicToFirestore(uid, clean as Record<string, ClinicMonthData>, updatedAt);
+    else if (type === 'staff' && uid) await saveStaffToFirestore(uid, clean as Staff[], updatedAt);
+    else if (type === 'friend') {
+      if (shareId) await saveFriendShareToFirestore(shareId, clean as Record<string, DetailItem[]>, updatedAt);
+      else if (uid) await saveFriendToFirestore(uid, clean as Record<string, DetailItem[]>, updatedAt);
+    }
   } catch (err) {
     console.error('Firestore sync error:', err);
   }
@@ -65,7 +81,7 @@ async function runSync(type: SyncType, data: unknown) {
 
 // Firestoreへの非同期保存（バックグラウンド）
 function syncToFirestore(type: SyncType, data: unknown) {
-  if (!currentUid) return;
+  if (!currentUid && !(type === 'friend' && getFriendShareId())) return;
 
   // デバウンス用
   if (syncTimers[type]) clearTimeout(syncTimers[type]);

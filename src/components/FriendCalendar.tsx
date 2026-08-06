@@ -1,8 +1,12 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import type { DetailItem } from '../types';
 import { FRIEND_EVENT_COLORS } from '../types';
 import { getDaysInMonth, getFirstDayOfWeek, formatDate, getToday, WEEKDAY_LABELS } from '../utils/dateUtils';
-import { loadFriendEvents, getFriendDayEvents, saveFriendDayEvents, getSavedMonth, saveCurrentMonth, addDeletedEvent } from '../utils/storage';
+import {
+  loadFriendEvents, getFriendDayEvents, saveFriendDayEvents, getSavedMonth, saveCurrentMonth, addDeletedEvent,
+  getFriendShareId, setFriendShareId, restoreToLocal, getLocalUpdatedAt, setLocalUpdatedAt,
+} from '../utils/storage';
+import { auth, subscribeFriendShare, saveFriendShareToFirestore } from '../utils/firebase';
 import { getHolidays } from '../utils/holidays';
 import EventAddScreen from './EventAddScreen';
 import TimeField from './TimeField';
@@ -28,7 +32,14 @@ export default function FriendCalendar() {
   const [editUseRange, setEditUseRange] = useState(false);
   const [editRangeEnd, setEditRangeEnd] = useState('');
   const [editRepeatType, setEditRepeatType] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
+  const [shareVersion, setShareVersion] = useState(0);
+  const [showShare, setShowShare] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [creatingShare, setCreatingShare] = useState(false);
   const composingRef = useRef(false);
+
+  const shareId = useMemo(() => { void shareVersion; return getFriendShareId(); }, [shareVersion]);
+  const shareUrl = shareId ? `${location.origin}${import.meta.env.BASE_URL}?share=${shareId}` : '';
 
   const handleCompositionStart = useCallback(() => { composingRef.current = true; }, []);
   const handleCompositionEnd = useCallback(() => { composingRef.current = false; }, []);
@@ -43,6 +54,49 @@ export default function FriendCalendar() {
   const holidays = useMemo(() => getHolidays(year), [year]);
 
   const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
+
+  // 共有中はリアルタイム購読（相手の編集を反映）
+  useEffect(() => {
+    const sid = getFriendShareId();
+    if (!sid) return;
+    return subscribeFriendShare(sid, ({ exists, data, updatedAt }) => {
+      if (!exists) return;
+      if (updatedAt > getLocalUpdatedAt('friend')) {
+        restoreToLocal('friend', data);
+        setLocalUpdatedAt('friend', updatedAt);
+        refresh();
+      }
+    });
+  }, [shareVersion, refresh]);
+
+  const createShare = async () => {
+    setCreatingShare(true);
+    try {
+      const id = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, '');
+      const ts = getLocalUpdatedAt('friend') || Date.now();
+      setLocalUpdatedAt('friend', ts);
+      await saveFriendShareToFirestore(id, JSON.parse(JSON.stringify(loadFriendEvents())), ts);
+      setFriendShareId(id);
+      setShareVersion(v => v + 1);
+    } catch (err) {
+      console.error('friendShare create error:', err);
+      alert('共有リンクの作成に失敗しました');
+    } finally {
+      setCreatingShare(false);
+    }
+  };
+
+  const copyShareUrl = async () => {
+    await navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const stopShare = () => {
+    if (!confirm('この端末を共有から切り離します。予定データは消えません。よろしいですか？')) return;
+    setFriendShareId(null);
+    setShareVersion(v => v + 1);
+  };
 
   const prevMonth = useCallback(() => {
     const newY = month === 1 ? year - 1 : year;
@@ -236,11 +290,61 @@ export default function FriendCalendar() {
           <span className="cal-year">{year}年</span>
         </div>
         <div className="cal-header-right">
+          <button className="cal-today-btn" onClick={() => setShowShare(true)}>{shareId ? '共有中' : '共有'}</button>
           <button className="cal-today-btn" onClick={goToday}>今日</button>
           <button className="cal-nav-btn" onClick={prevMonth}>◀</button>
           <button className="cal-nav-btn" onClick={nextMonth}>▶</button>
         </div>
       </div>
+
+      {/* 共有モーダル */}
+      {showShare && (
+        <div className="shift-editor-overlay" onClick={() => { setShowShare(false); setCopied(false); }}>
+          <div className="shift-editor" onClick={e => e.stopPropagation()}>
+            <div className="shift-editor-header">
+              <span>友達の予定を共有</span>
+              <button onClick={() => { setShowShare(false); setCopied(false); }}>✕</button>
+            </div>
+            <div style={{ padding: '16px' }}>
+              {shareId ? (
+                <>
+                  <div style={{ wordBreak: 'break-all', fontFamily: 'monospace', fontSize: '12px', background: '#f5f5f5', padding: '10px', borderRadius: '8px', lineHeight: '1.6' }}>
+                    {shareUrl}
+                  </div>
+                  <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                    <button className="cal-today-btn" style={{ padding: '8px 24px', fontSize: '14px' }} onClick={copyShareUrl}>
+                      {copied ? 'コピーしました!' : 'リンクをコピー'}
+                    </button>
+                  </div>
+                  <div style={{ marginTop: '12px', fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
+                    リンクを知っている人はこのカレンダーを閲覧・編集できます
+                  </div>
+                  <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                    <button className="cal-today-btn" style={{ padding: '8px 24px', fontSize: '14px' }} onClick={stopShare}>
+                      共有をやめる（この端末のみ）
+                    </button>
+                  </div>
+                </>
+              ) : auth.currentUser ? (
+                <>
+                  <div style={{ fontSize: '14px', color: '#333', lineHeight: '1.7' }}>
+                    共有リンクを知っている人は、このカレンダーを見る・編集することができます。
+                  </div>
+                  <div style={{ textAlign: 'center', marginTop: '16px' }}>
+                    <button className="cal-today-btn" style={{ padding: '8px 24px', fontSize: '14px' }} onClick={createShare} disabled={creatingShare}>
+                      共有リンクを作成
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: '14px', color: '#333', lineHeight: '1.7' }}>
+                  共有リンクの作成にはGoogleログインが必要です。設定タブからログインしてください。
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 曜日ヘッダー */}
       <div className="cal-weekdays">

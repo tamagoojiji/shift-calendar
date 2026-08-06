@@ -8,11 +8,13 @@ import {
   onAuthChange,
   loadShiftsFromFirestore, loadClinicFromFirestore, loadStaffFromFirestore, loadFriendFromFirestore,
   saveShiftsToFirestore, saveClinicToFirestore, saveStaffToFirestore, saveFriendToFirestore,
+  loadFriendShareFromFirestore,
 } from './utils/firebase';
 import type { SyncType } from './utils/storage';
 import {
   setCurrentUid, restoreToLocal, getLocalUpdatedAt, setLocalUpdatedAt,
   loadShifts, loadClinicData, loadStaff, loadFriendEvents,
+  getFriendShareId, setFriendShareId,
 } from './utils/storage';
 import { registerServiceWorker, checkAndFireReminders, requestNotificationPermission } from './utils/reminder';
 
@@ -64,11 +66,14 @@ export default function App() {
           await reconcile(u.uid, 'shifts', shifts, Object.keys(shifts.data).length > 0, loadShifts, saveShiftsToFirestore);
           await reconcile(u.uid, 'clinic', clinic, Object.keys(clinic.data).length > 0, loadClinicData, saveClinicToFirestore);
           await reconcile(u.uid, 'staff', staff, staff.data.length > 0, loadStaff, saveStaffToFirestore);
-          try {
-            const friend: { data: Record<string, DetailItem[]>; updatedAt: number } = await loadFriendFromFirestore(u.uid);
-            await reconcile(u.uid, 'friend', friend, Object.keys(friend.data).length > 0, loadFriendEvents, saveFriendToFirestore);
-          } catch (err) {
-            console.error('Firestore friend restore error:', err);
+          // 共有モード中は個人docとのreconcileをしない（共有docが正）
+          if (!getFriendShareId()) {
+            try {
+              const friend: { data: Record<string, DetailItem[]>; updatedAt: number } = await loadFriendFromFirestore(u.uid);
+              await reconcile(u.uid, 'friend', friend, Object.keys(friend.data).length > 0, loadFriendEvents, saveFriendToFirestore);
+            } catch (err) {
+              console.error('Firestore friend restore error:', err);
+            }
           }
           // Firestore復元後にコンポーネントを再マウントさせる
           setDataVersion(v => v + 1);
@@ -81,6 +86,28 @@ export default function App() {
       setLoading(false);
     });
     return () => { unsubscribe(); clearTimeout(timeout); };
+  }, []);
+
+  // 共有リンク（?share=）からの参加
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const shareParam = params.get('share');
+    if (!shareParam) return;
+    history.replaceState(null, '', location.pathname);
+    if (getFriendShareId() === shareParam) { setTab('friend'); return; }
+    setFriendShareId(shareParam); // 先に設定して起動時reconcileと競合しないようにする
+    (async () => {
+      const res = await loadFriendShareFromFirestore(shareParam);
+      if (res.exists) {
+        restoreToLocal('friend', res.data);
+        setLocalUpdatedAt('friend', res.updatedAt);
+        setTab('friend');
+        setDataVersion(v => v + 1);
+      } else {
+        setFriendShareId(null);
+        alert('共有リンクが無効です');
+      }
+    })();
   }, []);
 
   // Service Worker登録 & リマインダー定期チェック

@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence, type User } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import type { DayData, ClinicMonthData, Staff, DetailItem } from '../types';
 
 const firebaseConfig = {
@@ -95,5 +95,34 @@ export async function loadFriendFromFirestore(uid: string): Promise<{ data: Reco
     return { data: d.data || {}, updatedAt: readUpdatedAt(d.updatedAt) };
   }
   return { data: {}, updatedAt: 0 };
+}
+
+// ===== 友達の予定 共有（friendShares/{shareId}） =====
+function getFriendShareDocRef(shareId: string) {
+  return doc(db, 'friendShares', shareId);
+}
+
+export async function saveFriendShareToFirestore(shareId: string, data: Record<string, DetailItem[]>, updatedAt: number = Date.now()): Promise<void> {
+  await setDoc(getFriendShareDocRef(shareId), { data, updatedAt }, { merge: true });
+}
+
+export async function loadFriendShareFromFirestore(shareId: string): Promise<{ exists: boolean; data: Record<string, DetailItem[]>; updatedAt: number }> {
+  const snap = await getDoc(getFriendShareDocRef(shareId));
+  if (snap.exists()) {
+    const d = snap.data();
+    return { exists: true, data: d.data || {}, updatedAt: readUpdatedAt(d.updatedAt) };
+  }
+  return { exists: false, data: {}, updatedAt: 0 };
+}
+
+export function subscribeFriendShare(shareId: string, cb: (p: { exists: boolean; data: Record<string, DetailItem[]>; updatedAt: number }) => void): () => void {
+  return onSnapshot(getFriendShareDocRef(shareId), (snap) => {
+    if (snap.exists()) {
+      const d = snap.data();
+      cb({ exists: true, data: d.data || {}, updatedAt: readUpdatedAt(d.updatedAt) });
+    } else {
+      cb({ exists: false, data: {}, updatedAt: 0 });
+    }
+  }, (err) => console.error('friendShare subscribe error:', err));
 }
 
