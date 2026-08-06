@@ -4,12 +4,15 @@
 
 ## デプロイ（重要）
 
-GitHub Pages は **`gh-pages` ブランチから配信**。`main` に push しても反映されない。
+GitHub Pages は **GitHub Actions（`.github/workflows/deploy-pages.yml`）でデプロイ**。`main` に push すると自動でビルド＆デプロイされる（2026-08-06 に gh-pages ブランチ配信から切替。legacy Pages ビルドが恒常的に失敗するようになったため）。
 
 ```bash
-npm run build
-npx gh-pages -d dist -m "Updates"
+git push origin main   # これだけで自動デプロイ
+gh run watch           # 進行確認（または gh run list --workflow=deploy-pages.yml）
 ```
+
+手動再デプロイ: `gh workflow run deploy-pages.yml`
+旧 `npx gh-pages -d dist` は使わない（gh-pagesブランチはもう配信元ではない）。
 
 本番URL: https://tamagoojiji.github.io/shift-calendar/
 
