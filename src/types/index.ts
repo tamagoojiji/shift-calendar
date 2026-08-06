@@ -20,7 +20,11 @@ export interface DetailItem {
   endTime?: string; // HH:MM（終了時間。任意）
   content: string;
   url?: string;
+  color?: string; // 表示色。友達の予定で使用
 }
+
+// 友達の予定の選択可能な色（先頭 = 既定）
+export const FRIEND_EVENT_COLORS = ['#9C27B0', '#E91E63', '#1E88E5', '#F57C00'];
 
 // 眼科スタッフ
 export interface Staff {

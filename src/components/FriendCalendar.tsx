@@ -1,9 +1,11 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import type { DetailItem } from '../types';
+import { FRIEND_EVENT_COLORS } from '../types';
 import { getDaysInMonth, getFirstDayOfWeek, formatDate, getToday, WEEKDAY_LABELS } from '../utils/dateUtils';
 import { loadFriendEvents, getFriendDayEvents, saveFriendDayEvents, getSavedMonth, saveCurrentMonth, addDeletedEvent } from '../utils/storage';
 import { getHolidays } from '../utils/holidays';
 import EventAddScreen from './EventAddScreen';
+import TimeField from './TimeField';
 import { useSwipe } from '../hooks/useSwipe';
 
 const FRIEND_COLOR = '#9C27B0';
@@ -17,8 +19,19 @@ export default function FriendCalendar() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [addingEventDate, setAddingEventDate] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState('');
   const [editTime, setEditTime] = useState('');
+  const [editEndTime, setEditEndTime] = useState('');
   const [editContent, setEditContent] = useState('');
+  const [editUrl, setEditUrl] = useState('');
+  const [editColor, setEditColor] = useState(FRIEND_EVENT_COLORS[0]);
+  const [editUseRange, setEditUseRange] = useState(false);
+  const [editRangeEnd, setEditRangeEnd] = useState('');
+  const [editRepeatType, setEditRepeatType] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
+  const composingRef = useRef(false);
+
+  const handleCompositionStart = useCallback(() => { composingRef.current = true; }, []);
+  const handleCompositionEnd = useCallback(() => { composingRef.current = false; }, []);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfWeek(year, month);
@@ -62,19 +75,95 @@ export default function FriendCalendar() {
     setEditingItemId(null);
   };
 
+  const resetEditState = () => {
+    setEditingItemId(null);
+    setEditEndTime('');
+    setEditUseRange(false);
+    setEditRangeEnd('');
+    setEditRepeatType('daily');
+  };
+
   const startEditEvent = (item: DetailItem) => {
     setEditingItemId(item.id);
+    setEditDate(selectedDate || '');
     setEditTime(item.time);
+    setEditEndTime(item.endTime || '');
     setEditContent(item.content);
+    setEditUrl(item.url || '');
+    setEditColor(item.color || FRIEND_EVENT_COLORS[0]);
+    setEditUseRange(false);
+    setEditRangeEnd('');
+    setEditRepeatType('daily');
   };
 
   const saveEditEvent = () => {
     if (!selectedDate || !editingItemId || !editContent.trim()) return;
-    const events = getFriendDayEvents(selectedDate);
-    saveFriendDayEvents(selectedDate, events.map(d =>
-      d.id === editingItemId ? { ...d, time: editTime, content: editContent.trim() } : d
-    ));
-    setEditingItemId(null);
+    const content = editContent.trim();
+    const time = editTime;
+    // 開始時間がない（終日）なら終了時間は保持しない
+    const endTime = time && editEndTime ? editEndTime : undefined;
+    const url = editUrl.trim() || undefined;
+    const color = editColor;
+    const newDate = editDate || selectedDate;
+
+    if (newDate !== selectedDate) {
+      // 日付変更: 元の日から削除して移動先の日へ追加
+      const events = getFriendDayEvents(selectedDate);
+      const original = events.find(d => d.id === editingItemId);
+      saveFriendDayEvents(selectedDate, events.filter(d => d.id !== editingItemId));
+      saveFriendDayEvents(newDate, [
+        ...getFriendDayEvents(newDate),
+        { ...original, id: editingItemId, time, endTime, content, url, color },
+      ]);
+    } else {
+      saveFriendDayEvents(selectedDate, getFriendDayEvents(selectedDate).map(d =>
+        d.id === editingItemId ? { ...d, time, endTime, content, url, color } : d
+      ));
+    }
+
+    if (editUseRange && editRangeEnd && editRangeEnd >= newDate) {
+      const start = new Date(newDate);
+      const end = new Date(editRangeEnd);
+      let count = 0;
+
+      const addToDate = (ds: string) => {
+        if (ds === newDate) return;
+        const item: DetailItem = {
+          id: Date.now().toString() + '_e' + count,
+          time,
+          ...(endTime && { endTime }),
+          content,
+          ...(url && { url }),
+          color,
+        };
+        saveFriendDayEvents(ds, [...getFriendDayEvents(ds), item]);
+        count++;
+      };
+
+      if (editRepeatType === 'daily') {
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          addToDate(d.toISOString().slice(0, 10));
+        }
+      } else if (editRepeatType === 'weekly') {
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 7)) {
+          addToDate(d.toISOString().slice(0, 10));
+        }
+      } else if (editRepeatType === 'monthly') {
+        const dayOfMonth = start.getDate();
+        for (let d = new Date(start); d <= end; ) {
+          addToDate(d.toISOString().slice(0, 10));
+          d.setMonth(d.getMonth() + 1);
+          d.setDate(dayOfMonth);
+        }
+      } else if (editRepeatType === 'yearly') {
+        for (let d = new Date(start); d <= end; ) {
+          addToDate(d.toISOString().slice(0, 10));
+          d.setFullYear(d.getFullYear() + 1);
+        }
+      }
+    }
+
+    resetEditState();
     refresh();
   };
 
@@ -126,7 +215,7 @@ export default function FriendCalendar() {
           {extraCount > 0 && <span className="cal-badge">+{extraCount}</span>}
         </div>
         {events.slice(0, 2).map(item => (
-          <div key={item.id} className="cal-chip" style={{ background: FRIEND_COLOR }}>
+          <div key={item.id} className="cal-chip" style={{ background: item.color || FRIEND_COLOR }}>
             <span className="cal-chip-text">{item.content}</span>
           </div>
         ))}
@@ -188,28 +277,106 @@ export default function FriendCalendar() {
           {selectedEvents.map(item => (
             editingItemId === item.id ? (
               <div key={item.id} className="detail-add-form">
-                <input
-                  type="time"
-                  value={editTime}
-                  onChange={e => setEditTime(e.target.value)}
-                  className="detail-input-time"
-                />
+                <div className="detail-time-row">
+                  <div className="detail-time-field">
+                    <label className="detail-time-label">日付</label>
+                    <input
+                      type="date"
+                      value={editDate}
+                      onChange={e => setEditDate(e.target.value)}
+                      className="detail-input-date"
+                    />
+                  </div>
+                </div>
+                <div className="detail-time-row">
+                  <div className="detail-time-field">
+                    <label className="detail-time-label">開始</label>
+                    <TimeField value={editTime} onChange={setEditTime} placeholder="時間を入力" />
+                  </div>
+                  <div className="detail-time-field">
+                    <label className="detail-time-label">終了</label>
+                    <TimeField value={editEndTime} onChange={setEditEndTime} placeholder="時間を入力" />
+                  </div>
+                </div>
                 <input
                   type="text"
                   value={editContent}
                   onChange={e => setEditContent(e.target.value)}
                   className="detail-input-content"
-                  onKeyDown={e => e.key === 'Enter' && saveEditEvent()}
+                  onCompositionStart={handleCompositionStart}
+                  onCompositionEnd={handleCompositionEnd}
+                  onKeyDown={e => { if (e.key === 'Enter' && !composingRef.current) saveEditEvent(); }}
                   autoFocus
                 />
+                <input
+                  type="url"
+                  placeholder="URL（任意）"
+                  value={editUrl}
+                  onChange={e => setEditUrl(e.target.value)}
+                  className="detail-input-url"
+                />
+                <div className="color-dot-row">
+                  {FRIEND_EVENT_COLORS.map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`color-dot ${editColor === c ? 'selected' : ''}`}
+                      style={{ background: c }}
+                      onClick={() => setEditColor(c)}
+                    />
+                  ))}
+                </div>
+                <div className="detail-range-row">
+                  <label className="detail-range-toggle">
+                    <input
+                      type="checkbox"
+                      checked={editUseRange}
+                      onChange={e => { setEditUseRange(e.target.checked); if (!e.target.checked) { setEditRangeEnd(''); setEditRepeatType('daily'); } }}
+                    />
+                    <span>期間指定</span>
+                  </label>
+                  {editUseRange && (
+                    <>
+                      <div className="detail-repeat-btns">
+                        {([['daily', '毎日'], ['weekly', '毎週'], ['monthly', '毎月'], ['yearly', '毎年']] as const).map(([val, label]) => (
+                          <button
+                            key={val}
+                            className={`detail-repeat-btn ${editRepeatType === val ? 'active' : ''}`}
+                            onClick={() => setEditRepeatType(val)}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="detail-range-dates">
+                        <span className="detail-range-label">{(editDate || selectedDate).slice(5).replace('-', '/')}</span>
+                        <span>〜</span>
+                        <input
+                          type="date"
+                          value={editRangeEnd}
+                          min={editDate || selectedDate}
+                          onChange={e => setEditRangeEnd(e.target.value)}
+                          className="detail-input-date"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
                 <button className="detail-save-btn" onClick={saveEditEvent}>保存</button>
-                <button className="detail-cancel-btn" onClick={() => setEditingItemId(null)}>取消</button>
-                <button className="detail-item-delete" onClick={() => removeEvent(item.id)}>削除</button>
+                <button className="detail-cancel-btn" onClick={resetEditState}>取消</button>
+                <button className="detail-item-delete" onClick={() => { removeEvent(item.id); setEditingItemId(null); }}>削除</button>
               </div>
             ) : (
-              <div key={item.id} className="detail-item" onClick={() => startEditEvent(item)}>
-                <div className="detail-item-time">{item.time || '終日'}</div>
-                <div className="detail-item-content">{item.content}</div>
+              <div key={item.id}>
+                <div className="detail-item" onClick={() => startEditEvent(item)}>
+                  <div className="detail-item-time">{item.time || '終日'}</div>
+                  <div className="detail-item-content">{item.content}</div>
+                </div>
+                {item.url && (
+                  <a className="detail-item-url" href={item.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                    🔗 {item.url.replace(/^https?:\/\//, '').slice(0, 40)}{item.url.replace(/^https?:\/\//, '').length > 40 ? '...' : ''}
+                  </a>
+                )}
               </div>
             )
           ))}

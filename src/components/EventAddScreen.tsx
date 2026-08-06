@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import type { DetailItem } from '../types';
+import { FRIEND_EVENT_COLORS } from '../types';
 import { getDay, saveDay, getFriendDayEvents, saveFriendDayEvents } from '../utils/storage';
 import { analyzeEventImage } from '../utils/gemini';
 import { setReminder, requestNotificationPermission, TIMING_LABELS } from '../utils/reminder';
@@ -28,6 +29,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
   const [endTime, setEndTime] = useState('');
   const [content, setContent] = useState('');
   const [url, setUrl] = useState('');
+  const [color, setColor] = useState(FRIEND_EVENT_COLORS[0]);
   const [rangeEnd, setRangeEnd] = useState('');
   const [repeatType, setRepeatType] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
   const [reminderTimings, setReminderTimings] = useState<ReminderTiming[]>([]);
@@ -81,6 +83,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
           ...(time && endTime && { endTime }),
           content: trimContent,
           ...(trimUrl && { url: trimUrl }),
+          ...(target === 'friend' && { color }),
         };
         addItemToDate(ds, item);
         // 友達の予定はアラーム対象外
@@ -118,6 +121,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
         ...(time && endTime && { endTime }),
         content: trimContent,
         ...(trimUrl && { url: trimUrl }),
+        ...(target === 'friend' && { color }),
       };
       addItemToDate(date, item);
       // 友達の予定はアラーム対象外
@@ -146,6 +150,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
         time: evt.time,
         content: evt.content.trim(),
         ...(evt.url.trim() && { url: evt.url.trim() }),
+        ...(target === 'friend' && { color }),
       };
       addItemToDate(evt.date, item);
     });
@@ -299,6 +304,24 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
             autoFocus
           />
         </div>
+
+        {/* カラー（友達の予定のみ） */}
+        {target === 'friend' && (
+          <div className="event-add-field">
+            <label className="event-add-label">カラー</label>
+            <div className="color-dot-row">
+              {FRIEND_EVENT_COLORS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`color-dot ${color === c ? 'selected' : ''}`}
+                  style={{ background: c }}
+                  onClick={() => setColor(c)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* アラーム（友達の予定では非表示） */}
         {time && target !== 'friend' && (
