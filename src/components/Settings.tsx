@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { SHIFT_COLORS } from '../types';
 import { logout, loginWithGoogle, auth } from '../utils/firebase';
-import { loadDeletedEvents, removeDeletedEvent, getDay, saveDay, getFriendDayEvents, saveFriendDayEvents } from '../utils/storage';
+import { loadDeletedEvents, removeDeletedEvent, getDay, saveDay, getFriendDayEvents, saveFriendDayEvents, upsertLinkedCounterpart } from '../utils/storage';
 import type { DeletedEvent } from '../utils/storage';
 
 // 旧実装の source:'park' レコードは表示・復元の対象外
@@ -23,6 +23,7 @@ export default function Settings() {
       const events = getFriendDayEvents(evt.date);
       saveFriendDayEvents(evt.date, [...events, evt.item]);
     }
+    if (evt.item.linkId) upsertLinkedCounterpart(evt.source, evt.date, evt.item);
     // フィルタでindexがずれるため、保存済みリスト側の位置をdeletedAt+idで特定
     const rawIndex = loadDeletedEvents().findIndex(e => e.deletedAt === evt.deletedAt && e.item.id === evt.item.id);
     if (rawIndex >= 0) removeDeletedEvent(rawIndex);

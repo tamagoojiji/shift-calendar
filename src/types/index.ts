@@ -21,6 +21,7 @@ export interface DetailItem {
   content: string;
   url?: string;
   color?: string; // 表示色。友達の予定で使用
+  linkId?: string; // 個人予定と友達の予定のリンク識別子
 }
 
 // 友達の予定の選択可能な色（先頭 = 既定）: ピンク/グリーン/ホワイト/ブルー

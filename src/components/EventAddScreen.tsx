@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import type { DetailItem } from '../types';
 import { FRIEND_EVENT_COLORS } from '../types';
-import { getDay, saveDay, getFriendDayEvents, saveFriendDayEvents } from '../utils/storage';
+import { getDay, saveDay, getFriendDayEvents, saveFriendDayEvents, generateLinkId, upsertLinkedCounterpart } from '../utils/storage';
 import { analyzeEventImage } from '../utils/gemini';
 import { setReminder, requestNotificationPermission, TIMING_LABELS } from '../utils/reminder';
 import type { ReminderTiming } from '../utils/reminder';
@@ -33,6 +33,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
   const [rangeEnd, setRangeEnd] = useState('');
   const [repeatType, setRepeatType] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
   const [reminderTimings, setReminderTimings] = useState<ReminderTiming[]>([]);
+  const [linkToCounterpart, setLinkToCounterpart] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [pendingEvents, setPendingEvents] = useState<PendingEvent[] | null>(null);
@@ -122,8 +123,10 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
         content: trimContent,
         ...(trimUrl && { url: trimUrl }),
         ...(target === 'friend' && { color }),
+        ...(linkToCounterpart && { linkId: generateLinkId() }),
       };
       addItemToDate(date, item);
+      if (item.linkId) upsertLinkedCounterpart(target, date, item);
       // 友達の予定はアラーム対象外
       if (target !== 'friend' && time && reminderTimings.length > 0) {
         setReminder(item.id, date, time, trimContent, reminderTimings);
@@ -401,6 +404,20 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
             </div>
           )}
         </div>
+
+        {/* リンク（単発の予定のみ） */}
+        {repeatType === 'none' && (
+          <div className="detail-range-row">
+            <label className="detail-range-toggle">
+              <input
+                type="checkbox"
+                checked={linkToCounterpart}
+                onChange={e => setLinkToCounterpart(e.target.checked)}
+              />
+              <span>{target === 'friend' ? '勤務カレンダーにも登録（リンク）' : '友達カレンダーにも登録（リンク）'}</span>
+            </label>
+          </div>
+        )}
 
         {/* 保存ボタン */}
         <button className="detail-save-btn" style={{ width: '100%', marginTop: 8 }} onClick={handleSave}>保存</button>

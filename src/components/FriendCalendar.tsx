@@ -5,6 +5,8 @@ import { getDaysInMonth, getFirstDayOfWeek, formatDate, getToday, WEEKDAY_LABELS
 import {
   loadFriendEvents, getFriendDayEvents, saveFriendDayEvents, getSavedMonth, saveCurrentMonth, addDeletedEvent,
   getFriendShareId, setFriendShareId, restoreToLocal, getLocalUpdatedAt, setLocalUpdatedAt,
+  generateLinkId, findPersonalItemByLinkId, upsertLinkedCounterpart, removeLinkedCounterpart, unlinkPair,
+  reconcilePersonalWithFriendLinks,
 } from '../utils/storage';
 import { auth, subscribeFriendShare, saveFriendShareToFirestore } from '../utils/firebase';
 import { getHolidays } from '../utils/holidays';
@@ -64,6 +66,7 @@ export default function FriendCalendar() {
       if (updatedAt > getLocalUpdatedAt('friend')) {
         restoreToLocal('friend', data);
         setLocalUpdatedAt('friend', updatedAt);
+        reconcilePersonalWithFriendLinks();
         refresh();
       }
     });
@@ -160,20 +163,24 @@ export default function FriendCalendar() {
     const color = editColor;
     const newDate = editDate || selectedDate;
 
+    let savedItem: DetailItem | undefined;
+
     if (newDate !== selectedDate) {
       // 日付変更: 元の日から削除して移動先の日へ追加
       const events = getFriendDayEvents(selectedDate);
       const original = events.find(d => d.id === editingItemId);
       saveFriendDayEvents(selectedDate, events.filter(d => d.id !== editingItemId));
-      saveFriendDayEvents(newDate, [
-        ...getFriendDayEvents(newDate),
-        { ...original, id: editingItemId, time, endTime, content, url, color },
-      ]);
+      savedItem = { ...original, id: editingItemId, time, endTime, content, url, color };
+      saveFriendDayEvents(newDate, [...getFriendDayEvents(newDate), savedItem]);
     } else {
-      saveFriendDayEvents(selectedDate, getFriendDayEvents(selectedDate).map(d =>
-        d.id === editingItemId ? { ...d, time, endTime, content, url, color } : d
-      ));
+      saveFriendDayEvents(selectedDate, getFriendDayEvents(selectedDate).map(d => {
+        if (d.id !== editingItemId) return d;
+        savedItem = { ...d, time, endTime, content, url, color };
+        return savedItem;
+      }));
     }
+
+    if (savedItem?.linkId) upsertLinkedCounterpart('friend', newDate, savedItem);
 
     if (editUseRange && editRangeEnd && editRangeEnd >= newDate) {
       const start = new Date(newDate);
@@ -228,7 +235,23 @@ export default function FriendCalendar() {
     const target = events.find(d => d.id === id);
     if (target) addDeletedEvent(target, selectedDate, 'friend');
     saveFriendDayEvents(selectedDate, events.filter(d => d.id !== id));
+    if (target?.linkId) removeLinkedCounterpart('friend', target.linkId);
     setEditingItemId(null);
+    refresh();
+  };
+
+  const toggleLink = (item: DetailItem) => {
+    if (!selectedDate) return;
+    const linked = !!item.linkId && !!findPersonalItemByLinkId(item.linkId);
+    if (linked) {
+      if (!confirm('リンクを解除しますか？（両方の予定は残ります）')) return;
+      unlinkPair('friend', selectedDate, item.id);
+      refresh();
+      return;
+    }
+    const linkedItem: DetailItem = { ...item, linkId: item.linkId || generateLinkId() };
+    saveFriendDayEvents(selectedDate, getFriendDayEvents(selectedDate).map(d => (d.id === item.id ? linkedItem : d)));
+    upsertLinkedCounterpart('friend', selectedDate, linkedItem);
     refresh();
   };
 
@@ -430,6 +453,12 @@ export default function FriendCalendar() {
                     />
                   ))}
                 </div>
+                <button
+                  className={`detail-link-btn ${item.linkId && findPersonalItemByLinkId(item.linkId) ? 'linked' : ''}`}
+                  onClick={() => toggleLink(item)}
+                >
+                  {item.linkId && findPersonalItemByLinkId(item.linkId) ? '🔗 リンク済み（タップで解除）' : '📅 カレンダーとリンク'}
+                </button>
                 <div className="detail-range-row">
                   <label className="detail-range-toggle">
                     <input
@@ -473,7 +502,10 @@ export default function FriendCalendar() {
             ) : (
               <div key={item.id}>
                 <div className="detail-item" onClick={() => startEditEvent(item)}>
-                  <div className="detail-item-time">{item.time || '終日'}</div>
+                  <div className="detail-item-time">
+                    {item.time || '終日'}
+                    {item.linkId && <span className="detail-link-badge">🔗</span>}
+                  </div>
                   <div className="detail-item-content">{item.content}</div>
                 </div>
                 {item.url && (

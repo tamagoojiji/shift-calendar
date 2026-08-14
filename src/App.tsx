@@ -14,7 +14,7 @@ import type { SyncType } from './utils/storage';
 import {
   setCurrentUid, restoreToLocal, getLocalUpdatedAt, setLocalUpdatedAt,
   loadShifts, loadClinicData, loadStaff, loadFriendEvents,
-  getFriendShareId, setFriendShareId,
+  getFriendShareId, setFriendShareId, reconcilePersonalWithFriendLinks,
 } from './utils/storage';
 import { registerServiceWorker, checkAndFireReminders, requestNotificationPermission } from './utils/reminder';
 
@@ -75,6 +75,7 @@ export default function App() {
               console.error('Firestore friend restore error:', err);
             }
           }
+          reconcilePersonalWithFriendLinks();
           // Firestore復元後にコンポーネントを再マウントさせる
           setDataVersion(v => v + 1);
         } catch (err) {
@@ -101,6 +102,7 @@ export default function App() {
       if (res.exists) {
         restoreToLocal('friend', res.data);
         setLocalUpdatedAt('friend', res.updatedAt);
+        reconcilePersonalWithFriendLinks();
         setTab('friend');
         setDataVersion(v => v + 1);
       } else {

@@ -1,7 +1,10 @@
 import { useState, useRef, useCallback } from 'react';
 import type { DayData, DetailItem } from '../types';
 import { SHIFT_COLORS, SHIFT_LABELS } from '../types';
-import { saveDay, getDay, addDeletedEvent } from '../utils/storage';
+import {
+  saveDay, getDay, addDeletedEvent,
+  generateLinkId, findFriendItemByLinkId, upsertLinkedCounterpart, removeLinkedCounterpart, unlinkPair,
+} from '../utils/storage';
 import { WEEKDAY_LABELS } from '../utils/dateUtils';
 import { setReminder, removeReminder, hasReminder, getReminder, requestNotificationPermission, TIMING_LABELS } from '../utils/reminder';
 import type { ReminderTiming } from '../utils/reminder';
@@ -42,6 +45,22 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
     if (target) addDeletedEvent(target, dateStr, 'personal');
     day.details = (day.details || []).filter(d => d.id !== id);
     saveDay(day);
+    if (target?.linkId) removeLinkedCounterpart('personal', target.linkId);
+    onUpdate();
+  };
+
+  const toggleLink = (item: DetailItem) => {
+    const linked = !!item.linkId && !!findFriendItemByLinkId(item.linkId);
+    if (linked) {
+      if (!confirm('リンクを解除しますか？（両方の予定は残ります）')) return;
+      unlinkPair('personal', dateStr, item.id);
+      onUpdate();
+      return;
+    }
+    const linkedItem: DetailItem = { ...item, linkId: item.linkId || generateLinkId() };
+    day.details = (day.details || []).map(d => (d.id === item.id ? linkedItem : d));
+    saveDay(day);
+    upsertLinkedCounterpart('personal', dateStr, linkedItem);
     onUpdate();
   };
 
@@ -68,13 +87,16 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
     const newDate = editDate || dateStr;
     const existingReminder = getReminder(editingItemId, dateStr);
 
+    let savedItem: DetailItem | undefined;
+
     if (newDate !== dateStr) {
       // 日付変更: 元の日から削除して移動先の日へ追加
       const original = (day.details || []).find(d => d.id === editingItemId);
       day.details = (day.details || []).filter(d => d.id !== editingItemId);
       saveDay(day);
       const targetDay = getDay(newDate);
-      targetDay.details = [...(targetDay.details || []), { ...original, id: editingItemId, time, endTime, content, url }];
+      savedItem = { ...original, id: editingItemId, time, endTime, content, url };
+      targetDay.details = [...(targetDay.details || []), savedItem];
       saveDay(targetDay);
       if (existingReminder) {
         removeReminder(editingItemId, dateStr);
@@ -83,9 +105,11 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
         }
       }
     } else {
-      day.details = (day.details || []).map(d =>
-        d.id === editingItemId ? { ...d, time, endTime, content, url } : d
-      );
+      day.details = (day.details || []).map(d => {
+        if (d.id !== editingItemId) return d;
+        savedItem = { ...d, time, endTime, content, url };
+        return savedItem;
+      });
       saveDay(day);
 
       // 既存リマインダーを編集後の状態に同期（終日化したら削除、時刻/内容変更は反映）
@@ -97,6 +121,8 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
         }
       }
     }
+
+    if (savedItem?.linkId) upsertLinkedCounterpart('personal', newDate, savedItem);
 
     if (editUseRange && editRangeEnd && editRangeEnd >= newDate) {
       const start = new Date(newDate);
@@ -234,6 +260,12 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
               onChange={e => setEditUrl(e.target.value)}
               className="detail-input-url"
             />
+            <button
+              className={`detail-link-btn ${item.linkId && findFriendItemByLinkId(item.linkId) ? 'linked' : ''}`}
+              onClick={() => toggleLink(item)}
+            >
+              {item.linkId && findFriendItemByLinkId(item.linkId) ? '🔗 リンク済み（タップで解除）' : '👥 友達とリンク'}
+            </button>
             <div className="detail-range-row">
               <label className="detail-range-toggle">
                 <input
@@ -277,7 +309,10 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
         ) : (
           <div key={item.id}>
             <div className="detail-item">
-              <div className="detail-item-time" onClick={() => startEditDetail(item)}>{item.time || '終日'}</div>
+              <div className="detail-item-time" onClick={() => startEditDetail(item)}>
+                {item.time || '終日'}
+                {item.linkId && <span className="detail-link-badge">🔗</span>}
+              </div>
               <div className="detail-item-content" onClick={() => startEditDetail(item)}>{item.content}</div>
               {item.time && (
                 <button

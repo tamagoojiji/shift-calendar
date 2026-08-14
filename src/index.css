@@ -1062,6 +1062,31 @@ body {
   color: var(--on-primary);
 }
 
+.detail-link-btn {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--surface-container-high);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.15s;
+}
+
+.detail-link-btn.linked {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.detail-link-badge {
+  margin-left: 4px;
+  font-size: 10px;
+}
+
 .detail-range-dates {
   display: flex;
   align-items: center;

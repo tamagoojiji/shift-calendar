@@ -1,5 +1,7 @@
 import type { DayData, ClinicMonthData, Staff, DetailItem } from '../types';
+import { FRIEND_EVENT_COLORS } from '../types';
 import { saveShiftsToFirestore, saveClinicToFirestore, saveStaffToFirestore, saveFriendToFirestore, saveFriendShareToFirestore } from './firebase';
+import { getReminder, setReminder, removeReminder } from './reminder';
 
 const STORAGE_KEYS = {
   shifts: 'shift_calendar_data',
@@ -256,4 +258,231 @@ export function saveCurrentMonth(year: number, month: number): void {
 // Firestoreからローカルにデータ復元（type単位）
 export function restoreToLocal(type: SyncType, data: unknown): void {
   localStorage.setItem(STORAGE_KEYS[type], JSON.stringify(data));
+}
+
+// 個人予定 ⇔ 友達の予定のリンク
+export function generateLinkId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function emptyDay(date: string): DayData {
+  return { date, dayShift: null, nightShift: null, nightTime: null, isOff: false, details: [] };
+}
+
+export function findPersonalItemByLinkId(linkId: string): { date: string; item: DetailItem } | null {
+  const all = loadShifts();
+  for (const date of Object.keys(all)) {
+    const item = (all[date]?.details || []).find(d => d.linkId === linkId);
+    if (item) return { date, item };
+  }
+  return null;
+}
+
+export function findFriendItemByLinkId(linkId: string): { date: string; item: DetailItem } | null {
+  const all = loadFriendEvents();
+  for (const date of Object.keys(all)) {
+    const item = (all[date] || []).find(d => d.linkId === linkId);
+    if (item) return { date, item };
+  }
+  return null;
+}
+
+// リンク相手を作成/更新（source = itemが属する側）
+export function upsertLinkedCounterpart(source: 'personal' | 'friend', date: string, item: DetailItem): void {
+  const linkId = item.linkId;
+  if (!linkId) return;
+
+  if (source === 'personal') {
+    const all = loadFriendEvents();
+    let oldDate: string | null = null;
+    let existing: DetailItem | undefined;
+    for (const d of Object.keys(all)) {
+      const found = (all[d] || []).find(e => e.linkId === linkId);
+      if (found) { oldDate = d; existing = found; break; }
+    }
+
+    if (existing && oldDate) {
+      const updated: DetailItem = { ...existing, time: item.time, endTime: item.endTime, content: item.content, url: item.url };
+      if (oldDate === date) {
+        all[date] = (all[date] || []).map(e => (e.linkId === linkId ? updated : e));
+      } else {
+        all[oldDate] = (all[oldDate] || []).filter(e => e.linkId !== linkId);
+        all[date] = [...(all[date] || []), updated];
+      }
+    } else {
+      all[date] = [...(all[date] || []), {
+        id: Date.now().toString(),
+        linkId,
+        time: item.time,
+        endTime: item.endTime,
+        content: item.content,
+        url: item.url,
+        color: FRIEND_EVENT_COLORS[0],
+      }];
+    }
+    saveFriendEvents(all);
+    return;
+  }
+
+  const all = loadShifts();
+  let oldDate: string | null = null;
+  let existing: DetailItem | undefined;
+  for (const d of Object.keys(all)) {
+    const found = (all[d]?.details || []).find(e => e.linkId === linkId);
+    if (found) { oldDate = d; existing = found; break; }
+  }
+
+  if (existing && oldDate) {
+    const updated: DetailItem = { ...existing, time: item.time, endTime: item.endTime, content: item.content, url: item.url };
+    if (oldDate === date) {
+      all[date].details = (all[date].details || []).map(e => (e.linkId === linkId ? updated : e));
+    } else {
+      all[oldDate].details = (all[oldDate].details || []).filter(e => e.linkId !== linkId);
+      const target = all[date] || emptyDay(date);
+      target.details = [...(target.details || []), updated];
+      all[date] = target;
+      const reminder = getReminder(existing.id, oldDate);
+      if (reminder) {
+        removeReminder(existing.id, oldDate);
+        if (updated.time) setReminder(existing.id, date, updated.time, updated.content, reminder.timings);
+      }
+    }
+  } else {
+    const target = all[date] || emptyDay(date);
+    target.details = [...(target.details || []), {
+      id: Date.now().toString(),
+      linkId,
+      time: item.time,
+      endTime: item.endTime,
+      content: item.content,
+      url: item.url,
+    }];
+    all[date] = target;
+  }
+  saveShifts(all);
+}
+
+// リンク相手を削除（削除履歴には積まない）
+export function removeLinkedCounterpart(source: 'personal' | 'friend', linkId: string): void {
+  if (source === 'personal') {
+    const all = loadFriendEvents();
+    let hit = false;
+    for (const d of Object.keys(all)) {
+      const next = (all[d] || []).filter(e => e.linkId !== linkId);
+      if (next.length !== (all[d] || []).length) { all[d] = next; hit = true; }
+    }
+    if (hit) saveFriendEvents(all);
+    return;
+  }
+
+  const all = loadShifts();
+  let hit = false;
+  for (const d of Object.keys(all)) {
+    const details = all[d]?.details || [];
+    const target = details.find(e => e.linkId === linkId);
+    if (!target) continue;
+    all[d].details = details.filter(e => e.linkId !== linkId);
+    removeReminder(target.id, d);
+    hit = true;
+  }
+  if (hit) saveShifts(all);
+}
+
+// リンク解除（両方のアイテムは残す）
+export function unlinkPair(source: 'personal' | 'friend', date: string, itemId: string): void {
+  let linkId: string | undefined;
+
+  if (source === 'personal') {
+    const all = loadShifts();
+    const item = (all[date]?.details || []).find(d => d.id === itemId);
+    if (!item?.linkId) return;
+    linkId = item.linkId;
+    delete item.linkId;
+    saveShifts(all);
+  } else {
+    const all = loadFriendEvents();
+    const item = (all[date] || []).find(d => d.id === itemId);
+    if (!item?.linkId) return;
+    linkId = item.linkId;
+    delete item.linkId;
+    saveFriendEvents(all);
+  }
+
+  if (source === 'personal') {
+    const all = loadFriendEvents();
+    let hit = false;
+    for (const d of Object.keys(all)) {
+      (all[d] || []).forEach(e => {
+        if (e.linkId === linkId) { delete e.linkId; hit = true; }
+      });
+    }
+    if (hit) saveFriendEvents(all);
+  } else {
+    const all = loadShifts();
+    let hit = false;
+    for (const d of Object.keys(all)) {
+      (all[d]?.details || []).forEach(e => {
+        if (e.linkId === linkId) { delete e.linkId; hit = true; }
+      });
+    }
+    if (hit) saveShifts(all);
+  }
+}
+
+// 友達ストア差し替え後、個人側のリンク済み予定を追従させる（友達ストアには書かない）
+export function reconcilePersonalWithFriendLinks(): void {
+  const friendAll = loadFriendEvents();
+  const friendMap = new Map<string, { date: string; item: DetailItem }>();
+  Object.keys(friendAll).forEach(date => {
+    (friendAll[date] || []).forEach(item => {
+      if (item.linkId) friendMap.set(item.linkId, { date, item });
+    });
+  });
+
+  const shifts = loadShifts();
+  let changed = false;
+
+  Object.keys(shifts).forEach(date => {
+    const day = shifts[date];
+    if (!day) return;
+    for (const item of [...(day.details || [])]) {
+      if (!item.linkId) continue;
+      const counterpart = friendMap.get(item.linkId);
+
+      if (!counterpart) {
+        day.details = (day.details || []).filter(d => d.id !== item.id);
+        addDeletedEvent(item, date, 'personal');
+        removeReminder(item.id, date);
+        changed = true;
+        continue;
+      }
+
+      const f = counterpart.item;
+      const newDate = counterpart.date;
+      const same = item.time === f.time
+        && (item.endTime || '') === (f.endTime || '')
+        && item.content === f.content
+        && (item.url || '') === (f.url || '')
+        && newDate === date;
+      if (same) continue;
+
+      const updated: DetailItem = { ...item, time: f.time, endTime: f.endTime, content: f.content, url: f.url };
+      if (newDate === date) {
+        day.details = (day.details || []).map(d => (d.id === item.id ? updated : d));
+      } else {
+        day.details = (day.details || []).filter(d => d.id !== item.id);
+        const target = shifts[newDate] || emptyDay(newDate);
+        target.details = [...(target.details || []), updated];
+        shifts[newDate] = target;
+        const reminder = getReminder(item.id, date);
+        if (reminder) {
+          removeReminder(item.id, date);
+          if (updated.time) setReminder(item.id, newDate, updated.time, updated.content, reminder.timings);
+        }
+      }
+      changed = true;
+    }
+  });
+
+  if (changed) saveShifts(shifts);
 }
