@@ -52,8 +52,15 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
   const toggleLink = (item: DetailItem) => {
     const linked = !!item.linkId && !!findFriendItemByLinkId(item.linkId);
     if (linked) {
-      if (!confirm('リンクを解除しますか？（両方の予定は残ります）')) return;
+      if (!confirm('リンクを解除しますか？（この予定は削除され、友達側の予定は残ります）')) return;
       unlinkPair('personal', dateStr, item.id);
+      const archived: DetailItem = { ...item };
+      delete archived.linkId;
+      day.details = (day.details || []).filter(d => d.id !== item.id);
+      saveDay(day);
+      addDeletedEvent(archived, dateStr, 'personal');
+      if (getReminder(item.id, dateStr)) removeReminder(item.id, dateStr);
+      setEditingItemId(null);
       onUpdate();
       return;
     }

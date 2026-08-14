@@ -244,8 +244,13 @@ export default function FriendCalendar() {
     if (!selectedDate) return;
     const linked = !!item.linkId && !!findPersonalItemByLinkId(item.linkId);
     if (linked) {
-      if (!confirm('リンクを解除しますか？（両方の予定は残ります）')) return;
+      if (!confirm('リンクを解除しますか？（この予定は削除され、勤務カレンダー側の予定は残ります）')) return;
       unlinkPair('friend', selectedDate, item.id);
+      const archived: DetailItem = { ...item };
+      delete archived.linkId;
+      saveFriendDayEvents(selectedDate, getFriendDayEvents(selectedDate).filter(d => d.id !== item.id));
+      addDeletedEvent(archived, selectedDate, 'friend');
+      setEditingItemId(null);
       refresh();
       return;
     }
