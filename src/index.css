@@ -820,6 +820,10 @@ body {
 .detail-item-content {
   font-size: 14px;
   flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .detail-item-delete {
@@ -1164,7 +1168,8 @@ body {
 
 .event-add-body {
   padding: 20px 16px;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
+  /* ボトムナビ（z-index同値でDOM後方＝上に描画される）に保存ボタンが被らないようナビ高さ分を確保 */
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 40px);
   display: flex;
   flex-direction: column;
   gap: 16px;
