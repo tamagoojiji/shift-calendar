@@ -24,6 +24,6 @@ async function callAnalyzeApi<T>(kind: 'event', imageBase64: string, mimeType: s
 // イベント解析
 export async function analyzeEventImage(imageBase64: string, mimeType: string) {
   return callAnalyzeApi<{
-    events: { date: string; time: string; content: string; url: string }[];
+    events: { date: string; time: string; content: string; location: string; url: string }[];
   }>('event', imageBase64, mimeType);
 }

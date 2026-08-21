@@ -19,6 +19,7 @@ interface PendingEvent {
   date: string;
   time: string;
   content: string;
+  location: string;
   url: string;
   checked: boolean;
 }
@@ -28,6 +29,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
   const [time, setTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [content, setContent] = useState('');
+  const [locationText, setLocationText] = useState('');
   const [url, setUrl] = useState('');
   const [color, setColor] = useState(FRIEND_EVENT_COLORS[0]);
   const [rangeEnd, setRangeEnd] = useState('');
@@ -70,6 +72,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
   const handleSave = () => {
     if (!content.trim()) return;
     const trimContent = content.trim();
+    const trimLocation = locationText.trim();
     const trimUrl = url.trim() || undefined;
 
     if (repeatType !== 'none' && rangeEnd && rangeEnd >= date) {
@@ -83,6 +86,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
           time,
           ...(time && endTime && { endTime }),
           content: trimContent,
+          ...(target !== 'friend' && trimLocation && { location: trimLocation }),
           ...(trimUrl && { url: trimUrl }),
           ...(target === 'friend' && { color }),
         };
@@ -121,6 +125,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
         time,
         ...(time && endTime && { endTime }),
         content: trimContent,
+        ...(target !== 'friend' && trimLocation && { location: trimLocation }),
         ...(trimUrl && { url: trimUrl }),
         ...(target === 'friend' && { color }),
         ...(linkToCounterpart && { linkId: generateLinkId() }),
@@ -152,6 +157,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
         id: Date.now().toString() + '_b' + i,
         time: evt.time,
         content: evt.content.trim(),
+        ...(target !== 'friend' && evt.location.trim() && { location: evt.location.trim() }),
         ...(evt.url.trim() && { url: evt.url.trim() }),
         ...(target === 'friend' && { color }),
       };
@@ -171,7 +177,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
     try {
       const base64 = await fileToBase64(file);
       const data = await analyzeEventImage(base64, file.type);
-      const events: { date: string; time: string; content: string; url: string }[] = data.events || [];
+      const events: { date: string; time: string; content: string; location: string; url: string }[] = data.events || [];
 
       if (events.length === 0) {
         setImportError('イベント情報を読み取れませんでした');
@@ -183,6 +189,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
         date: evt.date || dateStr,
         time: evt.time || '',
         content: evt.content || '',
+        location: evt.location || '',
         url: evt.url || '',
         checked: true,
       })));
@@ -237,6 +244,15 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
                   placeholder="予定内容"
                   className="detail-input-content"
                 />
+                {target !== 'friend' && (
+                  <input
+                    type="text"
+                    value={p.location}
+                    onChange={e => updatePending(p.id, { location: e.target.value })}
+                    placeholder="場所（任意）"
+                    className="detail-input-content"
+                  />
+                )}
                 <input
                   type="url"
                   value={p.url}
@@ -307,6 +323,23 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
             autoFocus
           />
         </div>
+
+        {/* 場所（勤務カレンダーの予定のみ） */}
+        {target !== 'friend' && (
+          <div className="event-add-field">
+            <label className="event-add-label">📍 場所（任意）</label>
+            <input
+              type="text"
+              placeholder="場所を入力"
+              value={locationText}
+              onChange={e => setLocationText(e.target.value)}
+              className="detail-input-content"
+              style={{ width: '100%', minWidth: 0 }}
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
+            />
+          </div>
+        )}
 
         {/* カラー（友達の予定のみ） */}
         {target === 'friend' && (

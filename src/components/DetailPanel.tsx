@@ -25,6 +25,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
   const [editTime, setEditTime] = useState('');
   const [editEndTime, setEditEndTime] = useState('');
   const [editContent, setEditContent] = useState('');
+  const [editLocation, setEditLocation] = useState('');
   const [editUrl, setEditUrl] = useState('');
   const [editUseRange, setEditUseRange] = useState(false);
   const [editRangeEnd, setEditRangeEnd] = useState('');
@@ -77,6 +78,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
     setEditTime(item.time);
     setEditEndTime(item.endTime || '');
     setEditContent(item.content);
+    setEditLocation(item.location || '');
     setEditUrl(item.url || '');
     setEditUseRange(false);
     setEditRangeEnd('');
@@ -90,6 +92,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
     // 開始時間がない（終日）なら終了時間は保持しない
     const endTime = time && editEndTime ? editEndTime : undefined;
 
+    const locationVal = editLocation.trim() || undefined;
     const url = editUrl.trim() || undefined;
     const newDate = editDate || dateStr;
     const existingReminder = getReminder(editingItemId, dateStr);
@@ -102,7 +105,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
       day.details = (day.details || []).filter(d => d.id !== editingItemId);
       saveDay(day);
       const targetDay = getDay(newDate);
-      savedItem = { ...original, id: editingItemId, time, endTime, content, url };
+      savedItem = { ...original, id: editingItemId, time, endTime, content, location: locationVal, url };
       targetDay.details = [...(targetDay.details || []), savedItem];
       saveDay(targetDay);
       if (existingReminder) {
@@ -114,7 +117,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
     } else {
       day.details = (day.details || []).map(d => {
         if (d.id !== editingItemId) return d;
-        savedItem = { ...d, time, endTime, content, url };
+        savedItem = { ...d, time, endTime, content, location: locationVal, url };
         return savedItem;
       });
       saveDay(day);
@@ -144,6 +147,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
           time,
           ...(endTime && { endTime }),
           content,
+          ...(locationVal && { location: locationVal }),
           ...(url && { url }),
         };
         targetDay.details = [...(targetDay.details || []), item];
@@ -261,6 +265,15 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
               autoFocus
             />
             <input
+              type="text"
+              placeholder="場所（任意）"
+              value={editLocation}
+              onChange={e => setEditLocation(e.target.value)}
+              className="detail-input-content"
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
+            />
+            <input
               type="url"
               placeholder="URL（任意）"
               value={editUrl}
@@ -330,6 +343,9 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
                 </button>
               )}
             </div>
+            {item.location && (
+              <div className="detail-item-location">📍 {item.location}</div>
+            )}
             {item.url && (
               <a className="detail-item-url" href={item.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
                 🔗 {item.url.replace(/^https?:\/\//, '').slice(0, 40)}{item.url.replace(/^https?:\/\//, '').length > 40 ? '...' : ''}

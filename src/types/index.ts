@@ -19,6 +19,7 @@ export interface DetailItem {
   time: string; // HH:MM（開始時間。空なら終日）
   endTime?: string; // HH:MM（終了時間。任意）
   content: string;
+  location?: string; // 場所（任意）
   url?: string;
   color?: string; // 表示色。友達の予定で使用
   linkId?: string; // 個人予定と友達の予定のリンク識別子
