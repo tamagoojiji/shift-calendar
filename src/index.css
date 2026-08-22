@@ -624,7 +624,8 @@ body {
 .detail-panel {
   background: var(--surface-container-lowest);
   padding: 16px;
-  padding-bottom: 0;
+  /* ボトムナビと接して編集フォームのボタンが被って見えないよう余白を確保 */
+  padding-bottom: 24px;
   flex: 1;
 }
 

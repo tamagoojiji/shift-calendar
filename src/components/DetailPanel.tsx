@@ -270,6 +270,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
               value={editLocation}
               onChange={e => setEditLocation(e.target.value)}
               className="detail-input-content"
+              style={{ width: '100%', minWidth: 0 }}
               onCompositionStart={handleCompositionStart}
               onCompositionEnd={handleCompositionEnd}
             />
