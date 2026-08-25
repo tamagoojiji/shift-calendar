@@ -100,9 +100,34 @@ export default function ClinicCalendar() {
     refresh();
   };
 
-  // 前日に夜勤が入っているか（＝当日は10時出勤）
-  const hasNightShiftPrev = (dateStr: string): boolean =>
-    allShifts[getPrevDate(dateStr)]?.nightShift != null;
+  // フルパート一括反映: 月火水金=全日、木=午前（日・土・祝はスキップ）
+  const applyFullPart = (staffId: string) => {
+    const data = loadClinicData();
+    if (!data[monthKey]) data[monthKey] = {};
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = formatDate(year, month, d);
+      const dow = new Date(year, month - 1, d).getDay();
+      if (dow === 0 || dow === 6 || holidays.has(dateStr)) continue;
+      const pattern: ClinicShiftPattern = dow === 4 ? 'am' : 'am_pm';
+      if (!data[monthKey][dateStr]) data[monthKey][dateStr] = {};
+      data[monthKey][dateStr][staffId] = pattern;
+      if (staffId === 'yotsuhashi') {
+        const day = getDay(dateStr);
+        day.dayShift = dayShiftForClinicPattern(pattern);
+        day.isOff = false;
+        saveDay(day);
+      }
+    }
+    saveClinicData(data);
+    setEditingCell(null);
+    refresh();
+  };
+
+  // 前日に夜勤が入っているか（＝当日は10時出勤）。「外し」は夜勤扱いしない
+  const hasNightShiftPrev = (dateStr: string): boolean => {
+    const prev = allShifts[getPrevDate(dateStr)]?.nightShift;
+    return prev != null && prev !== 'hazushi';
+  };
 
   // 四ツ橋の自動判定
   const getYotsuhashiPattern = (dateStr: string): ClinicShiftPattern => {
@@ -336,6 +361,13 @@ export default function ClinicCalendar() {
                 </button>
               ))}
             </div>
+            <button
+              className="shift-btn"
+              style={{ width: '100%', marginTop: 8 }}
+              onClick={() => applyFullPart(editingCell.staffId)}
+            >
+              フルパート（月火水金=全日・木=午前）
+            </button>
           </div>
         </div>
       )}
