@@ -38,7 +38,7 @@ const BLOCK_CONFIG: Record<string, { line1: string; line2?: string; bg: string; 
 
 // クリニック側パターン → マイカレンダーの日勤区分への写像
 const dayShiftForClinicPattern = (pattern: ClinicShiftPattern): DayShiftType =>
-  pattern === 'am' || pattern === 'am_ten' ? 'eye_am' : 'eye';
+  pattern === 'am' || pattern === 'am_ten' ? 'eye_am' : pattern === 'pm' ? 'eye_pm' : 'eye';
 
 // 前日夜勤の日は10時出勤（全日→全日(10時)、午前→午前(10時)）
 const toTenPattern = (pattern: ClinicShiftPattern): ClinicShiftPattern =>
@@ -140,9 +140,11 @@ export default function ClinicCalendar() {
     const thisDay = allShifts[dateStr];
     if (thisDay && (thisDay.dayShift === 'off' || (thisDay.dayShift !== 'eye' && thisDay.isOff))) return 'off';
 
-    // 眼科(午前)指定・木曜・土曜は午前のみ、それ以外は全日
+    // 眼科(午後)指定は午後のみ、眼科(午前)指定・木曜・土曜は午前のみ、それ以外は全日
     const base: ClinicShiftPattern =
-      thisDay?.dayShift === 'eye_am' || dow === 4 || dow === 6 ? 'am' : 'am_pm';
+      thisDay?.dayShift === 'eye_pm' ? 'pm'
+        : thisDay?.dayShift === 'eye_am' || dow === 4 || dow === 6 ? 'am'
+        : 'am_pm';
 
     return hasNightShiftPrev(dateStr) ? toTenPattern(base) : base;
   };

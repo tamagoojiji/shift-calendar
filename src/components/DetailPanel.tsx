@@ -193,7 +193,8 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
     shiftSummary.push({ label: '', color: 'transparent' });
   } else {
     if (day.dayShift) {
-      shiftSummary.push({ label: day.dayShift === 'eye_am' ? '眼科(午前)' : SHIFT_LABELS[day.dayShift], color: SHIFT_COLORS[day.dayShift] });
+      const dayLabel = day.dayShift === 'eye_am' ? '眼科(午前)' : day.dayShift === 'eye_pm' ? '眼科(午後)' : SHIFT_LABELS[day.dayShift];
+      shiftSummary.push({ label: dayLabel, color: SHIFT_COLORS[day.dayShift] });
     } else {
       shiftSummary.push({ label: '', color: 'transparent' });
     }

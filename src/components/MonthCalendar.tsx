@@ -166,6 +166,9 @@ export default function MonthCalendar() {
       if (current !== 'am' && current !== 'am_ten') {
         data[monthKey][dateStr]['yotsuhashi'] = 'am';
       }
+    } else if (day.dayShift === 'eye_pm') {
+      // 眼科(午後)の場合、常に'pm'
+      data[monthKey][dateStr]['yotsuhashi'] = 'pm';
     } else {
       // 眼科以外の日勤 or 日勤なし → クリニック側をクリア
       data[monthKey][dateStr]['yotsuhashi'] = null;
@@ -409,6 +412,7 @@ function ShiftEditor({ dateStr, day, onSelect, onClose }: {
     { value: 'facility', label: '施設' },
     { value: 'off', label: '休み' },
     { value: 'eye_am', label: '眼科(午前)' },
+    { value: 'eye_pm', label: '眼科(午後)' },
   ];
 
   const nightOptions: { value: NightShiftPlace; label: string }[] = [

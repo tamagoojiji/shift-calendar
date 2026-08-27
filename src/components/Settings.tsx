@@ -68,7 +68,7 @@ export default function Settings() {
       <div className="settings-section">
         <h3>色設定</h3>
         <div className="settings-colors">
-          {Object.entries(SHIFT_COLORS).map(([key, color]) => (
+          {Object.entries(SHIFT_COLORS).filter(([key]) => key !== 'eye_am' && key !== 'eye_pm').map(([key, color]) => (
             <div key={key} className="settings-color-item">
               <span className="settings-color-dot" style={{ background: color }} />
               <span>{
