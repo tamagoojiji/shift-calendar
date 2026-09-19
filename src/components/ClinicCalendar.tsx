@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import type { ClinicShiftPattern, DayShiftType, Staff } from '../types';
 import { getDaysInMonth, formatDate, WEEKDAY_LABELS, getPrevDate } from '../utils/dateUtils';
 import { loadClinicData, saveClinicData, loadStaff, saveStaff, loadShifts, getDay, saveDay, getSavedMonth, saveCurrentMonth } from '../utils/storage';
-import { generateClinicPDF } from '../utils/pdfExport';
 import { getHolidays } from '../utils/holidays';
 
 const PATTERN_LABELS: Record<string, string> = {
@@ -213,6 +212,7 @@ export default function ClinicCalendar() {
           return getPattern(dateStr, staff.id);
         }),
       }));
+      const { generateClinicPDF } = await import('../utils/pdfExport');
       await generateClinicPDF(year, month, rows);
     } finally {
       setExporting(false);

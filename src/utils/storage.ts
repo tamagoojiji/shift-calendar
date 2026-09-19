@@ -14,6 +14,15 @@ export type SyncType = 'shifts' | 'clinic' | 'staff' | 'friend';
 
 const UPDATED_AT_KEY = 'shift_sync_updated_at';
 
+// ローカルに描画可能なデータがあるか（初回起動判定）
+export function hasLocalData(): boolean {
+  try {
+    return !!(localStorage.getItem(STORAGE_KEYS.shifts) || localStorage.getItem(UPDATED_AT_KEY));
+  } catch {
+    return false;
+  }
+}
+
 // type別の最終更新時刻（ローカル）
 export function getLocalUpdatedAt(type: SyncType): number {
   try {

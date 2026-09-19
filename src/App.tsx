@@ -14,7 +14,7 @@ import type { SyncType } from './utils/storage';
 import {
   setCurrentUid, restoreToLocal, getLocalUpdatedAt, setLocalUpdatedAt,
   loadShifts, loadClinicData, loadStaff, loadFriendEvents,
-  getFriendShareId, setFriendShareId, reconcilePersonalWithFriendLinks,
+  getFriendShareId, setFriendShareId, reconcilePersonalWithFriendLinks, hasLocalData,
 } from './utils/storage';
 import { registerServiceWorker, checkAndFireReminders, requestNotificationPermission } from './utils/reminder';
 
@@ -26,29 +26,33 @@ async function reconcile<T>(
   remoteHasData: boolean,
   loadLocal: () => T,
   push: (uid: string, data: T, updatedAt: number) => Promise<void>,
-): Promise<void> {
+): Promise<boolean> {
   const localUpdatedAt = getLocalUpdatedAt(type);
 
   if (remote.updatedAt > localUpdatedAt) {
     restoreToLocal(type, remote.data);
     setLocalUpdatedAt(type, remote.updatedAt);
-    return;
+    return true;
   }
 
   if (localUpdatedAt > remote.updatedAt) {
     await push(uid, loadLocal(), localUpdatedAt);
-    return;
+    return false;
   }
 
   // 両方0（移行期・旧データ）はリモートにデータがあれば従来通り復元
   if (localUpdatedAt === 0 && remoteHasData) {
     restoreToLocal(type, remote.data);
+    return true;
   }
+
+  return false;
 }
 
 export default function App() {
   const [tab, setTab] = useState<TabType>('calendar');
-  const [loading, setLoading] = useState(true);
+  // ローカルにデータがあれば待たずに描画し、Firestore同期はバックグラウンドで行う
+  const [loading, setLoading] = useState(() => !hasLocalData());
   const [dataVersion, setDataVersion] = useState(0);
 
   useEffect(() => {
@@ -57,34 +61,41 @@ export default function App() {
 
     const unsubscribe = onAuthChange(async (u) => {
       clearTimeout(timeout);
+      setLoading(false);
       if (u) {
         setCurrentUid(u.uid);
         try {
-          const shifts = await loadShiftsFromFirestore(u.uid);
-          const clinic = await loadClinicFromFirestore(u.uid);
-          const staff = await loadStaffFromFirestore(u.uid);
-          await reconcile(u.uid, 'shifts', shifts, Object.keys(shifts.data).length > 0, loadShifts, saveShiftsToFirestore);
-          await reconcile(u.uid, 'clinic', clinic, Object.keys(clinic.data).length > 0, loadClinicData, saveClinicToFirestore);
-          await reconcile(u.uid, 'staff', staff, staff.data.length > 0, loadStaff, saveStaffToFirestore);
           // 共有モード中は個人docとのreconcileをしない（共有docが正）
-          if (!getFriendShareId()) {
-            try {
-              const friend: { data: Record<string, DetailItem[]>; updatedAt: number } = await loadFriendFromFirestore(u.uid);
-              await reconcile(u.uid, 'friend', friend, Object.keys(friend.data).length > 0, loadFriendEvents, saveFriendToFirestore);
-            } catch (err) {
-              console.error('Firestore friend restore error:', err);
-            }
+          const shareMode = !!getFriendShareId();
+          // 1本が失敗しても他のdocは同期する（失敗したdocはローカルを維持）
+          const settle = <T,>(type: SyncType, p: Promise<T>) =>
+            p.catch((err) => { console.error(`Firestore ${type} restore error:`, err); return null; });
+          const [shifts, clinic, staff, friend] = await Promise.all([
+            settle('shifts', loadShiftsFromFirestore(u.uid)),
+            settle('clinic', loadClinicFromFirestore(u.uid)),
+            settle('staff', loadStaffFromFirestore(u.uid)),
+            shareMode
+              ? Promise.resolve(null)
+              : settle('friend', loadFriendFromFirestore(u.uid) as Promise<{ data: Record<string, DetailItem[]>; updatedAt: number }>),
+          ]);
+          let changed = false;
+          if (shifts) changed = await reconcile(u.uid, 'shifts', shifts, Object.keys(shifts.data).length > 0, loadShifts, saveShiftsToFirestore) || changed;
+          if (clinic) changed = await reconcile(u.uid, 'clinic', clinic, Object.keys(clinic.data).length > 0, loadClinicData, saveClinicToFirestore) || changed;
+          if (staff) changed = await reconcile(u.uid, 'staff', staff, staff.data.length > 0, loadStaff, saveStaffToFirestore) || changed;
+          if (friend) {
+            changed = await reconcile(u.uid, 'friend', friend, Object.keys(friend.data).length > 0, loadFriendEvents, saveFriendToFirestore) || changed;
           }
-          reconcilePersonalWithFriendLinks();
-          // Firestore復元後にコンポーネントを再マウントさせる
-          setDataVersion(v => v + 1);
+          if (changed) {
+            reconcilePersonalWithFriendLinks();
+            // Firestore復元後にコンポーネントを再マウントさせる
+            setDataVersion(v => v + 1);
+          }
         } catch (err) {
           console.error('Firestore restore error:', err);
         }
       } else {
         setCurrentUid(null);
       }
-      setLoading(false);
     });
     return () => { unsubscribe(); clearTimeout(timeout); };
   }, []);
