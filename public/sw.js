@@ -37,17 +37,20 @@ async function cacheFirst(request) {
   return res;
 }
 
+const SHELL_TIMEOUT_MS = 3000;
+
 async function networkFirst(request) {
   const cache = await caches.open(CACHE);
-  try {
-    const res = await fetch(request);
+  const cached = (await cache.match(APP_SHELL)) || (await cache.match(APP_ROOT));
+  // ブラウザHTTPキャッシュ（max-age=600）を使わずETag再検証し、デプロイ直後の新版を確実に取る
+  const network = fetch(request.url, { cache: 'no-cache', credentials: 'same-origin' }).then(async (res) => {
     if (res.ok) await cache.put(request, res.clone());
     return res;
-  } catch (err) {
-    const hit = (await cache.match(APP_SHELL)) || (await cache.match(APP_ROOT));
-    if (hit) return hit;
-    throw err;
-  }
+  });
+  if (!cached) return network;
+  // 回線が遅いときは3秒でキャッシュ済みシェルを返す（取得自体は継続してキャッシュ更新）
+  const timeout = new Promise((resolve) => setTimeout(() => resolve(cached), SHELL_TIMEOUT_MS));
+  return Promise.race([network.catch(() => cached), timeout]);
 }
 
 self.addEventListener('fetch', (event) => {
