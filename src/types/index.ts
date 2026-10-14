@@ -76,4 +76,4 @@ export const SHIFT_LABELS: Record<string, string> = {
 };
 
 // タブ
-export type TabType = 'calendar' | 'clinic' | 'friend' | 'settings';
+export type TabType = 'calendar' | 'clinic' | 'friend' | 'external' | 'settings';

@@ -3,6 +3,7 @@ import type { TabType, DetailItem } from './types';
 import MonthCalendar from './components/MonthCalendar';
 import ClinicCalendar from './components/ClinicCalendar';
 import FriendCalendar from './components/FriendCalendar';
+import ExternalCalendar from './components/ExternalCalendar';
 import Settings from './components/Settings';
 import {
   onAuthChange,
@@ -148,6 +149,7 @@ export default function App() {
         {tab === 'calendar' && <MonthCalendar key={dataVersion} />}
         {tab === 'clinic' && <ClinicCalendar key={dataVersion} />}
         {tab === 'friend' && <FriendCalendar key={dataVersion} />}
+        {tab === 'external' && <ExternalCalendar />}
         {tab === 'settings' && <Settings />}
       </div>
 
@@ -172,6 +174,13 @@ export default function App() {
         >
           <span className="nav-icon">👥</span>
           <span className="nav-label">友達</span>
+        </button>
+        <button
+          className={`nav-item ${tab === 'external' ? 'active' : ''}`}
+          onClick={() => setTab('external')}
+        >
+          <span className="nav-icon">🎤</span>
+          <span className="nav-label">外部</span>
         </button>
         <button
           className={`nav-item ${tab === 'settings' ? 'active' : ''}`}
