@@ -23,7 +23,15 @@ interface ExternalEvent {
 const API_URL = 'https://api.tamago-ai-world.com/dancers/external-events';
 const TOKEN_KEY = 'external_events_token';
 const CACHE_KEY = 'external_events_cache';
-const EXTERNAL_COLOR = '#7E57C2';
+const EXTERNAL_CHIP = { background: '#E0F2F1', color: '#00695C', borderLeft: '3px solid #00897B' };
+const TICKET_CHIP = { background: '#FFF3E0', color: '#BF360C', borderLeft: '3px solid #F4511E' };
+const TICKET_COLOR = '#BF360C';
+
+// ticket_sale（"YYYY-MM-DD HH:MM" / "YYYY-MM-DD" / 自由文）から販売開始日と時刻を取り出す
+function ticketDate(v: string | null | undefined): { date: string; time: string } | null {
+  const m = (v || '').match(/^(\d{4}-\d{2}-\d{2})(?:\s+(\d{1,2}:\d{2}))?/);
+  return m ? { date: m[1], time: m[2] || '' } : null;
+}
 
 function readStorage(key: string): string | null {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -128,6 +136,16 @@ export default function ExternalCalendar() {
     return map;
   }, [events]);
 
+  // チケット販売開始日 → その日に販売が始まるイベント
+  const salesByDate = useMemo(() => {
+    const map: Record<string, ExternalEvent[]> = {};
+    for (const ev of events) {
+      const t = ticketDate(ev.ticket_sale);
+      if (t && !(map[t.date] || []).some(e => e.show_name === ev.show_name)) (map[t.date] ||= []).push(ev);
+    }
+    return map;
+  }, [events]);
+
   const prevMonth = useCallback(() => {
     const newY = month === 1 ? year - 1 : year;
     const newM = month === 1 ? 12 : month - 1;
@@ -223,7 +241,12 @@ export default function ExternalCalendar() {
     const isToday = dateStr === today;
     const isSelected = dateStr === selectedDate;
     const dayEvents = eventsByDate[dateStr] || [];
-    const extraCount = dayEvents.length > 2 ? dayEvents.length - 2 : 0;
+    const daySales = salesByDate[dateStr] || [];
+    const chips = [
+      ...dayEvents.map(ev => ({ key: `e-${ev.show_name}`, text: ev.show_name, style: EXTERNAL_CHIP })),
+      ...daySales.map(ev => ({ key: `t-${ev.show_name}`, text: `🎫${ev.show_name}`, style: TICKET_CHIP })),
+    ];
+    const extraCount = chips.length > 2 ? chips.length - 2 : 0;
 
     cells.push(
       <div
@@ -236,9 +259,9 @@ export default function ExternalCalendar() {
           {holidayName && <span className="cal-holiday">{holidayName}</span>}
           {extraCount > 0 && <span className="cal-badge">+{extraCount}</span>}
         </div>
-        {dayEvents.slice(0, 2).map(ev => (
-          <div key={ev.show_name} className="cal-chip" style={{ background: EXTERNAL_COLOR }}>
-            <span className="cal-chip-text">{ev.show_name}</span>
+        {chips.slice(0, 2).map(c => (
+          <div key={c.key} className="cal-chip" style={c.style}>
+            <span className="cal-chip-text">{c.text}</span>
           </div>
         ))}
       </div>
@@ -246,6 +269,7 @@ export default function ExternalCalendar() {
   }
 
   const selectedEvents = selectedDate ? eventsByDate[selectedDate] || [] : [];
+  const selectedSales = selectedDate ? salesByDate[selectedDate] || [] : [];
 
   return (
     <div className="month-calendar">
@@ -286,9 +310,24 @@ export default function ExternalCalendar() {
             </span>
           </div>
 
-          {selectedEvents.length === 0 && (
+          {selectedEvents.length === 0 && selectedSales.length === 0 && (
             <div className="detail-shift-empty">外部イベントはありません</div>
           )}
+
+          {selectedSales.map(ev => {
+            const t = ticketDate(ev.ticket_sale);
+            return (
+              <div key={`t-${ev.show_name}`} className="detail-item" style={{ marginBottom: '12px' }}>
+                <div className="detail-item-time" style={{ color: TICKET_COLOR }}>{t?.time || '時刻未定'}</div>
+                <div className="detail-item-content" style={{ color: TICKET_COLOR, fontWeight: 'bold' }}>
+                  🎫 {ev.show_name} チケット販売開始
+                  <div style={{ fontSize: '12px', color: '#555', fontWeight: 'normal' }}>
+                    公演日 {parseInt(ev.date.slice(5, 7))}/{parseInt(ev.date.slice(8))}（{WEEKDAY_LABELS[new Date(ev.date).getDay()]}）
+                  </div>
+                </div>
+              </div>
+            );
+          })}
 
           {selectedEvents.map(ev => (
             <div key={ev.show_name} style={{ marginBottom: '12px' }}>
@@ -300,7 +339,7 @@ export default function ExternalCalendar() {
                 </div>
               </div>
               {ev.ticket_sale && (
-                <div style={{ fontSize: '13px', color: '#5E35B1', fontWeight: 'bold', padding: '2px 8px' }}>
+                <div style={{ fontSize: '13px', color: TICKET_COLOR, fontWeight: 'bold', padding: '2px 8px' }}>
                   🎫 チケット販売 {ev.ticket_sale}
                 </div>
               )}
