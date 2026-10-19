@@ -16,6 +16,7 @@ interface ExternalEvent {
   times: string[];
   event_instagram_account: string | null;
   event_x_account: string | null;
+  ticket_sale?: string | null;
   dancers: ExternalDancer[];
 }
 
@@ -298,6 +299,11 @@ export default function ExternalCalendar() {
                   {ev.times.length > 1 && `（${ev.times.length}回）`}
                 </div>
               </div>
+              {ev.ticket_sale && (
+                <div style={{ fontSize: '13px', color: '#5E35B1', fontWeight: 'bold', padding: '2px 8px' }}>
+                  🎫 チケット販売 {ev.ticket_sale}
+                </div>
+              )}
               {ev.dancers.length > 0 && (
                 <div style={{ fontSize: '13px', color: '#444', lineHeight: '1.7', padding: '2px 8px' }}>
                   {ev.dancers.map(dn => (
