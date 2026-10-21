@@ -168,16 +168,20 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
   };
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
     setImporting(true);
     setImportError(null);
 
     try {
-      const base64 = await fileToBase64(file);
-      const data = await analyzeEventImage(base64, file.type);
-      const events: { date: string; time: string; content: string; location: string; url: string }[] = data.events || [];
+      // 複数枚を並列解析し、画像の選択順で結果を連結する
+      const results = await Promise.all(files.map(async file => {
+        const base64 = await fileToBase64(file);
+        const data = await analyzeEventImage(base64, file.type);
+        return data.events || [];
+      }));
+      const events: { date: string; time: string; content: string; location: string; url: string }[] = results.flat();
 
       if (events.length === 0) {
         setImportError('イベント情報を読み取れませんでした');
@@ -396,12 +400,13 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
           onClick={() => imageRef.current?.click()}
           disabled={importing}
         >
-          {importing ? '読取中...' : '📷 画像から読み取り'}
+          {importing ? '読取中...' : '📷 画像から読み取り（複数可）'}
         </button>
         <input
           ref={imageRef}
           type="file"
           accept="image/*"
+          multiple
           onChange={handleImageSelect}
           hidden
         />
