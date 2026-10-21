@@ -37,6 +37,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
   const [reminderTimings, setReminderTimings] = useState<ReminderTiming[]>([]);
   const [linkToCounterpart, setLinkToCounterpart] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [mergeImages, setMergeImages] = useState(true);
   const [importError, setImportError] = useState<string | null>(null);
   const [pendingEvents, setPendingEvents] = useState<PendingEvent[] | null>(null);
   const imageRef = useRef<HTMLInputElement>(null);
@@ -175,10 +176,18 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
     setImportError(null);
 
     try {
-      // 複数枚は同じ予定の資料として1回でまとめて解析する
       const base64s = await Promise.all(files.map(file => fileToBase64(file)));
-      const data = await analyzeEventImages(files.map((file, i) => ({ imageBase64: base64s[i], mimeType: file.type })));
-      const events: { date: string; time: string; content: string; location: string; url: string }[] = data.events || [];
+      const imgs = files.map((file, i) => ({ imageBase64: base64s[i], mimeType: file.type }));
+      let events: { date: string; time: string; content: string; location: string; url: string }[];
+      if (mergeImages) {
+        // ON: 全画像を1リクエストで送り、サーバー側で1件に固定
+        const data = await analyzeEventImages(imgs, true);
+        events = data.events || [];
+      } else {
+        // OFF: 画像ごとに別解析し、選択順で連結
+        const results = await Promise.all(imgs.map(img => analyzeEventImages([img], false)));
+        events = results.flatMap(r => r.events || []);
+      }
 
       if (events.length === 0) {
         setImportError('イベント情報を読み取れませんでした');
@@ -392,6 +401,15 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
         </div>
 
         {/* 画像OCR */}
+        <label className="event-add-merge-check">
+          <input
+            type="checkbox"
+            checked={mergeImages}
+            onChange={e => setMergeImages(e.target.checked)}
+            disabled={importing}
+          />
+          複数枚を1つの予定としてまとめる
+        </label>
         <button
           className="event-add-image-btn"
           onClick={() => imageRef.current?.click()}

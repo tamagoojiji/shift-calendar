@@ -1210,6 +1210,15 @@ body {
   color: var(--on-surface-variant);
 }
 
+.event-add-merge-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: var(--on-surface);
+}
+
 .event-add-image-btn {
   width: 100%;
   padding: 12px;
