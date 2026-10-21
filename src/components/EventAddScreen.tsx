@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import type { DetailItem } from '../types';
 import { FRIEND_EVENT_COLORS } from '../types';
 import { getDay, saveDay, getFriendDayEvents, saveFriendDayEvents, generateLinkId, upsertLinkedCounterpart } from '../utils/storage';
-import { analyzeEventImage } from '../utils/gemini';
+import { analyzeEventImages } from '../utils/gemini';
 import { setReminder, requestNotificationPermission, TIMING_LABELS } from '../utils/reminder';
 import type { ReminderTiming } from '../utils/reminder';
 import TimeField from './TimeField';
@@ -175,13 +175,10 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
     setImportError(null);
 
     try {
-      // 複数枚を並列解析し、画像の選択順で結果を連結する
-      const results = await Promise.all(files.map(async file => {
-        const base64 = await fileToBase64(file);
-        const data = await analyzeEventImage(base64, file.type);
-        return data.events || [];
-      }));
-      const events: { date: string; time: string; content: string; location: string; url: string }[] = results.flat();
+      // 複数枚は同じ予定の資料として1回でまとめて解析する
+      const base64s = await Promise.all(files.map(file => fileToBase64(file)));
+      const data = await analyzeEventImages(files.map((file, i) => ({ imageBase64: base64s[i], mimeType: file.type })));
+      const events: { date: string; time: string; content: string; location: string; url: string }[] = data.events || [];
 
       if (events.length === 0) {
         setImportError('イベント情報を読み取れませんでした');
