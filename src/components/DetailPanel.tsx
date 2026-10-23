@@ -200,7 +200,8 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
     }
     if (day.nightShift) {
       const timeLabel = day.nightTime === '17' ? '17:00〜' : '20:00〜';
-      shiftSummary.push({ label: `${SHIFT_LABELS[day.nightShift]} ${timeLabel}`, color: SHIFT_COLORS[day.nightShift] });
+      const nightLabel = day.nightShift === 'hazushi' ? SHIFT_LABELS[day.nightShift] : `${SHIFT_LABELS[day.nightShift]} ${timeLabel}`;
+      shiftSummary.push({ label: nightLabel, color: SHIFT_COLORS[day.nightShift] });
     } else {
       shiftSummary.push({ label: '', color: 'transparent' });
     }
