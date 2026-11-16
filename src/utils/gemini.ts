@@ -1,19 +1,25 @@
 // 画像解析API（print-to-calendar バックエンド相乗り）
 // 旧: ユーザー入力のAPIキーでGeminiを直叩き
 // 新: サーバー側で Vertex（特典クレジット・キー不要）解析。プロンプト・正規化もサーバーに移植済み。
+import { auth } from './firebase';
+
 const API_BASE = 'https://print-to-calendar.tamago-ai-world.com';
 
-// バックエンド /api/shift-analyze の共有トークン。無差別なドライブバイ呼び出しを弾く水際用。
-// ※公開SPAのためこの値はバンドルに載る（＝暗号学的な秘密ではない）。損害上限は$10予算ガードが担保。
-const SHIFT_TOKEN = '6891a2835ad368580a57b7607f640b59349a444f63a5ec4b';
-
+// 認可: Googleログイン（Firebase IDトークン）をサーバーが検証し、許可リストの人だけ通す。
 async function callAnalyzeApi<T>(kind: 'event', images: { imageBase64: string; mimeType: string }[], merge: boolean): Promise<T> {
+  const idToken = await auth.currentUser?.getIdToken();
+  if (!idToken) {
+    throw new Error('画像の読み取りにはGoogleログインが必要です');
+  }
   const res = await fetch(`${API_BASE}/api/shift-analyze`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Shift-Token': SHIFT_TOKEN },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
     body: JSON.stringify({ kind, images, merge }),
   });
 
+  if (res.status === 403) {
+    throw new Error('このアカウントは読み取りを許可されていません');
+  }
   const json = await res.json().catch(() => null) as { ok?: boolean; result?: T; error?: string } | null;
   if (!res.ok || !json?.ok || !json.result) {
     throw new Error(json?.error || `解析サーバーエラー (HTTP ${res.status})`);
