@@ -34,17 +34,19 @@ export default function MonthCalendar() {
   const [showRequest, setShowRequest] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // 勤務希望の対象日。12月分だけ毎年11月に「12月1日〜翌年1月5日」をまとめて出すので、翌年1月5日まで含める
+  // 勤務希望の対象日。12月分だけ毎年11月に「12月1日〜翌年1月5日」をまとめて出すので、翌年1月5日まで含める。
+  // その分、1月分は6日から
   const isYearEnd = month === 12;
+  const startDay = month === 1 ? 6 : 1;
   const requestDays = useMemo(() => {
     const list: { dateStr: string; label: string }[] = [];
-    for (let d = 1; d <= daysInMonth; d++) list.push({ dateStr: formatDate(year, month, d), label: `${d}日` });
+    for (let d = startDay; d <= daysInMonth; d++) list.push({ dateStr: formatDate(year, month, d), label: `${d}日` });
     if (isYearEnd) {
       for (let d = 1; d <= 5; d++) list.push({ dateStr: formatDate(year + 1, 1, d), label: `1月${d}日` });
     }
     return list;
-  }, [year, month, daysInMonth, isYearEnd]);
-  const requestTitle = isYearEnd ? '12月1日〜1月5日' : `${month}月`;
+  }, [year, month, daysInMonth, isYearEnd, startDay]);
+  const requestTitle = isYearEnd ? '12月1日〜1月5日' : month === 1 ? '1月6日〜31日' : `${month}月`;
 
   const generateRequest = () => {
     const early17: string[] = [];
