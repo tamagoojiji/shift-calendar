@@ -34,26 +34,37 @@ export default function MonthCalendar() {
   const [showRequest, setShowRequest] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // 勤務希望の対象日。12月分だけ毎年11月に「12月1日〜翌年1月5日」をまとめて出すので、翌年1月5日まで含める
+  const isYearEnd = month === 12;
+  const requestDays = useMemo(() => {
+    const list: { dateStr: string; label: string }[] = [];
+    for (let d = 1; d <= daysInMonth; d++) list.push({ dateStr: formatDate(year, month, d), label: `${d}日` });
+    if (isYearEnd) {
+      for (let d = 1; d <= 5; d++) list.push({ dateStr: formatDate(year + 1, 1, d), label: `1月${d}日` });
+    }
+    return list;
+  }, [year, month, daysInMonth, isYearEnd]);
+  const requestTitle = isYearEnd ? '12月1日〜1月5日' : `${month}月`;
+
   const generateRequest = () => {
-    const early17: number[] = [];
-    const hazushiDays: number[] = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = formatDate(year, month, d);
+    const early17: string[] = [];
+    const hazushiDays: string[] = [];
+    for (const { dateStr, label } of requestDays) {
       const day = allShifts[dateStr];
       if (!day) continue;
       if (day.nightTime === '17') {
-        early17.push(d);
+        early17.push(label);
       }
       if (day.nightShift === 'hazushi' || (day.isOff && !day.nightShift)) {
-        hazushiDays.push(d);
+        hazushiDays.push(label);
       }
     }
-    const lines: string[] = [`${month}月の勤務希望になります。`, 'よろしくお願いします。', ''];
+    const lines: string[] = [`${requestTitle}の勤務希望になります。`, 'よろしくお願いします。', ''];
     if (early17.length > 0) {
-      lines.push(`17時から勤務可能日：${early17.join('日、')}日`);
+      lines.push(`17時から勤務可能日：${early17.join('、')}`);
     }
     if (hazushiDays.length > 0) {
-      lines.push(`夜勤外し日：${hazushiDays.join('日、')}日`);
+      lines.push(`夜勤外し日：${hazushiDays.join('、')}`);
     }
     if (lines.length === 3) {
       lines.push('該当する日がありません');
@@ -61,13 +72,10 @@ export default function MonthCalendar() {
     return lines.join('\n');
   };
 
-  const has17Days = useMemo(() => {
-    for (let d = 1; d <= daysInMonth; d++) {
-      const day = allShifts[formatDate(year, month, d)];
-      if (day?.nightTime === '17') return true;
-    }
-    return false;
-  }, [allShifts, year, month, daysInMonth]);
+  const has17Days = useMemo(
+    () => requestDays.some(({ dateStr }) => allShifts[dateStr]?.nightTime === '17'),
+    [allShifts, requestDays],
+  );
 
   const copyRequest = async () => {
     const text = generateRequest();
@@ -304,7 +312,7 @@ export default function MonthCalendar() {
         <div className="shift-editor-overlay" onClick={() => { setShowRequest(false); setCopied(false); }}>
           <div className="shift-editor" onClick={e => e.stopPropagation()}>
             <div className="shift-editor-header">
-              <span>{month}月 勤務希望</span>
+              <span>{requestTitle} 勤務希望</span>
               <button onClick={() => { setShowRequest(false); setCopied(false); }}>✕</button>
             </div>
             <pre style={{ whiteSpace: 'pre-wrap', padding: '16px', fontSize: '14px', lineHeight: '1.8' }}>
