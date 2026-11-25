@@ -18,6 +18,7 @@ interface PendingEvent {
   id: string;
   date: string;
   time: string;
+  openTime: string;
   content: string;
   location: string;
   url: string;
@@ -28,6 +29,8 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
   const [date, setDate] = useState(dateStr);
   const [time, setTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [isEvent, setIsEvent] = useState(false);
+  const [openTime, setOpenTime] = useState('');
   const [content, setContent] = useState('');
   const [locationText, setLocationText] = useState('');
   const [url, setUrl] = useState('');
@@ -86,6 +89,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
           id: Date.now().toString() + '_' + count,
           time,
           ...(time && endTime && { endTime }),
+          ...(isEvent && openTime && { openTime }),
           content: trimContent,
           ...(target !== 'friend' && trimLocation && { location: trimLocation }),
           ...(trimUrl && { url: trimUrl }),
@@ -125,6 +129,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
         id: Date.now().toString(),
         time,
         ...(time && endTime && { endTime }),
+        ...(isEvent && openTime && { openTime }),
         content: trimContent,
         ...(target !== 'friend' && trimLocation && { location: trimLocation }),
         ...(trimUrl && { url: trimUrl }),
@@ -157,6 +162,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
       const item: DetailItem = {
         id: Date.now().toString() + '_b' + i,
         time: evt.time,
+        ...(evt.openTime && { openTime: evt.openTime }),
         content: evt.content.trim(),
         ...(target !== 'friend' && evt.location.trim() && { location: evt.location.trim() }),
         ...(evt.url.trim() && { url: evt.url.trim() }),
@@ -178,7 +184,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
     try {
       const base64s = await Promise.all(files.map(file => fileToBase64(file)));
       const imgs = files.map((file, i) => ({ imageBase64: base64s[i], mimeType: file.type }));
-      let events: { date: string; time: string; content: string; location: string; url: string }[];
+      let events: { date: string; time: string; openTime?: string; content: string; location: string; url: string }[];
       if (mergeImages) {
         // ON: 全画像を1リクエストで送り、サーバー側で1件に固定
         const data = await analyzeEventImages(imgs, true);
@@ -198,6 +204,7 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
         id: 'p_' + Date.now() + '_' + i,
         date: evt.date || dateStr,
         time: evt.time || '',
+        openTime: evt.openTime || '',
         content: evt.content || '',
         location: evt.location || '',
         url: evt.url || '',
@@ -240,12 +247,26 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
                     onChange={e => updatePending(p.id, { date: e.target.value })}
                     className="detail-input-date"
                   />
-                  <input
-                    type="time"
-                    value={p.time}
-                    onChange={e => updatePending(p.id, { time: e.target.value })}
-                    className="detail-input-time"
-                  />
+                </div>
+                <div className="pending-event-row-inline">
+                  <label className="pending-event-time">
+                    <span>開場</span>
+                    <input
+                      type="time"
+                      value={p.openTime}
+                      onChange={e => updatePending(p.id, { openTime: e.target.value })}
+                      className="detail-input-time"
+                    />
+                  </label>
+                  <label className="pending-event-time">
+                    <span>開演</span>
+                    <input
+                      type="time"
+                      value={p.time}
+                      onChange={e => updatePending(p.id, { time: e.target.value })}
+                      className="detail-input-time"
+                    />
+                  </label>
                 </div>
                 <input
                   type="text"
@@ -305,10 +326,30 @@ export default function EventAddScreen({ dateStr, onSave, onClose, target = 'per
           />
         </div>
 
+        {/* イベント（開場時間を入れる） */}
+        <label className="event-add-merge-check">
+          <input
+            type="checkbox"
+            checked={isEvent}
+            onChange={e => setIsEvent(e.target.checked)}
+          />
+          イベント（開場時間を入れる）
+        </label>
+
+        {/* 開場時間（イベントのみ） */}
+        {isEvent && (
+          <div className="event-add-date-time-row">
+            <div className="event-add-field">
+              <label className="event-add-label">🚪 開場時間</label>
+              <TimeField value={openTime} onChange={setOpenTime} placeholder="時間を入力" />
+            </div>
+          </div>
+        )}
+
         {/* 開始時間 + 終了時間 横並び（未入力なら終日） */}
         <div className="event-add-date-time-row">
           <div className="event-add-field">
-            <label className="event-add-label">🕐 開始時間</label>
+            <label className="event-add-label">{isEvent ? '🕐 開演時間' : '🕐 開始時間'}</label>
             <TimeField value={time} onChange={setTime} placeholder="時間を入力" />
           </div>
           <div className="event-add-field">

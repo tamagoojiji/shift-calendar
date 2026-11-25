@@ -311,7 +311,7 @@ export function upsertLinkedCounterpart(source: 'personal' | 'friend', date: str
     }
 
     if (existing && oldDate) {
-      const updated: DetailItem = { ...existing, time: item.time, endTime: item.endTime, content: item.content, url: item.url };
+      const updated: DetailItem = { ...existing, time: item.time, endTime: item.endTime, openTime: item.openTime, content: item.content, url: item.url };
       if (oldDate === date) {
         all[date] = (all[date] || []).map(e => (e.linkId === linkId ? updated : e));
       } else {
@@ -324,6 +324,7 @@ export function upsertLinkedCounterpart(source: 'personal' | 'friend', date: str
         linkId,
         time: item.time,
         endTime: item.endTime,
+        openTime: item.openTime,
         content: item.content,
         url: item.url,
         color: FRIEND_EVENT_COLORS[0],
@@ -342,7 +343,7 @@ export function upsertLinkedCounterpart(source: 'personal' | 'friend', date: str
   }
 
   if (existing && oldDate) {
-    const updated: DetailItem = { ...existing, time: item.time, endTime: item.endTime, content: item.content, url: item.url };
+    const updated: DetailItem = { ...existing, time: item.time, endTime: item.endTime, openTime: item.openTime, content: item.content, url: item.url };
     if (oldDate === date) {
       all[date].details = (all[date].details || []).map(e => (e.linkId === linkId ? updated : e));
     } else {
@@ -363,6 +364,7 @@ export function upsertLinkedCounterpart(source: 'personal' | 'friend', date: str
       linkId,
       time: item.time,
       endTime: item.endTime,
+      openTime: item.openTime,
       content: item.content,
       url: item.url,
     }];
@@ -470,12 +472,13 @@ export function reconcilePersonalWithFriendLinks(): void {
       const newDate = counterpart.date;
       const same = item.time === f.time
         && (item.endTime || '') === (f.endTime || '')
+        && (item.openTime || '') === (f.openTime || '')
         && item.content === f.content
         && (item.url || '') === (f.url || '')
         && newDate === date;
       if (same) continue;
 
-      const updated: DetailItem = { ...item, time: f.time, endTime: f.endTime, content: f.content, url: f.url };
+      const updated: DetailItem = { ...item, time: f.time, endTime: f.endTime, openTime: f.openTime, content: f.content, url: f.url };
       if (newDate === date) {
         day.details = (day.details || []).map(d => (d.id === item.id ? updated : d));
       } else {

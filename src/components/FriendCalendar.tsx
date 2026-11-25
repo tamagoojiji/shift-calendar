@@ -28,6 +28,8 @@ export default function FriendCalendar() {
   const [editDate, setEditDate] = useState('');
   const [editTime, setEditTime] = useState('');
   const [editEndTime, setEditEndTime] = useState('');
+  const [editIsEvent, setEditIsEvent] = useState(false);
+  const [editOpenTime, setEditOpenTime] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editUrl, setEditUrl] = useState('');
   const [editColor, setEditColor] = useState(FRIEND_EVENT_COLORS[0]);
@@ -145,6 +147,8 @@ export default function FriendCalendar() {
     setEditDate(selectedDate || '');
     setEditTime(item.time);
     setEditEndTime(item.endTime || '');
+    setEditIsEvent(!!item.openTime);
+    setEditOpenTime(item.openTime || '');
     setEditContent(item.content);
     setEditUrl(item.url || '');
     setEditColor(item.color || FRIEND_EVENT_COLORS[0]);
@@ -159,6 +163,8 @@ export default function FriendCalendar() {
     const time = editTime;
     // 開始時間がない（終日）なら終了時間は保持しない
     const endTime = time && editEndTime ? editEndTime : undefined;
+    // イベントOFFまたは未入力なら開場時間は保持しない
+    const openTime = editIsEvent && editOpenTime ? editOpenTime : undefined;
     const url = editUrl.trim() || undefined;
     const color = editColor;
     const newDate = editDate || selectedDate;
@@ -170,12 +176,12 @@ export default function FriendCalendar() {
       const events = getFriendDayEvents(selectedDate);
       const original = events.find(d => d.id === editingItemId);
       saveFriendDayEvents(selectedDate, events.filter(d => d.id !== editingItemId));
-      savedItem = { ...original, id: editingItemId, time, endTime, content, url, color };
+      savedItem = { ...original, id: editingItemId, time, endTime, openTime, content, url, color };
       saveFriendDayEvents(newDate, [...getFriendDayEvents(newDate), savedItem]);
     } else {
       saveFriendDayEvents(selectedDate, getFriendDayEvents(selectedDate).map(d => {
         if (d.id !== editingItemId) return d;
-        savedItem = { ...d, time, endTime, content, url, color };
+        savedItem = { ...d, time, endTime, openTime, content, url, color };
         return savedItem;
       }));
     }
@@ -193,6 +199,7 @@ export default function FriendCalendar() {
           id: Date.now().toString() + '_e' + count,
           time,
           ...(endTime && { endTime }),
+          ...(openTime && { openTime }),
           content,
           ...(url && { url }),
           color,
@@ -420,9 +427,27 @@ export default function FriendCalendar() {
                     />
                   </div>
                 </div>
+                <div className="detail-range-row">
+                  <label className="detail-range-toggle">
+                    <input
+                      type="checkbox"
+                      checked={editIsEvent}
+                      onChange={e => setEditIsEvent(e.target.checked)}
+                    />
+                    <span>イベント（開場時間を入れる）</span>
+                  </label>
+                </div>
+                {editIsEvent && (
+                  <div className="detail-time-row">
+                    <div className="detail-time-field">
+                      <label className="detail-time-label">開場</label>
+                      <TimeField value={editOpenTime} onChange={setEditOpenTime} placeholder="時間を入力" />
+                    </div>
+                  </div>
+                )}
                 <div className="detail-time-row">
                   <div className="detail-time-field">
-                    <label className="detail-time-label">開始</label>
+                    <label className="detail-time-label">{editIsEvent ? '開演' : '開始'}</label>
                     <TimeField value={editTime} onChange={setEditTime} placeholder="時間を入力" />
                   </div>
                   <div className="detail-time-field">
@@ -508,7 +533,7 @@ export default function FriendCalendar() {
               <div key={item.id}>
                 <div className="detail-item" onClick={() => startEditEvent(item)}>
                   <div className="detail-item-time">
-                    {item.time || '終日'}
+                    {item.openTime ? (item.time ? `開場 ${item.openTime}／開演 ${item.time}` : `開場 ${item.openTime}`) : (item.time || '終日')}
                     {item.linkId && <span className="detail-link-badge">🔗</span>}
                   </div>
                   <div className="detail-item-content">{item.content}</div>

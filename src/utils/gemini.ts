@@ -30,6 +30,6 @@ async function callAnalyzeApi<T>(kind: 'event', images: { imageBase64: string; m
 // イベント解析（複数枚は同じ予定の資料としてまとめて送る）
 export async function analyzeEventImages(images: { imageBase64: string; mimeType: string }[], merge = false) {
   return callAnalyzeApi<{
-    events: { date: string; time: string; content: string; location: string; url: string }[];
+    events: { date: string; time: string; openTime?: string; content: string; location: string; url: string }[];
   }>('event', images, merge);
 }

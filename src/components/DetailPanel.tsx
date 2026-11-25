@@ -24,6 +24,8 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
   const [editDate, setEditDate] = useState('');
   const [editTime, setEditTime] = useState('');
   const [editEndTime, setEditEndTime] = useState('');
+  const [editIsEvent, setEditIsEvent] = useState(false);
+  const [editOpenTime, setEditOpenTime] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editLocation, setEditLocation] = useState('');
   const [editUrl, setEditUrl] = useState('');
@@ -77,6 +79,8 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
     setEditDate(dateStr);
     setEditTime(item.time);
     setEditEndTime(item.endTime || '');
+    setEditIsEvent(!!item.openTime);
+    setEditOpenTime(item.openTime || '');
     setEditContent(item.content);
     setEditLocation(item.location || '');
     setEditUrl(item.url || '');
@@ -91,6 +95,8 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
     const time = editTime;
     // 開始時間がない（終日）なら終了時間は保持しない
     const endTime = time && editEndTime ? editEndTime : undefined;
+    // イベントOFFまたは未入力なら開場時間は保持しない
+    const openTime = editIsEvent && editOpenTime ? editOpenTime : undefined;
 
     const locationVal = editLocation.trim() || undefined;
     const url = editUrl.trim() || undefined;
@@ -105,7 +111,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
       day.details = (day.details || []).filter(d => d.id !== editingItemId);
       saveDay(day);
       const targetDay = getDay(newDate);
-      savedItem = { ...original, id: editingItemId, time, endTime, content, location: locationVal, url };
+      savedItem = { ...original, id: editingItemId, time, endTime, openTime, content, location: locationVal, url };
       targetDay.details = [...(targetDay.details || []), savedItem];
       saveDay(targetDay);
       if (existingReminder) {
@@ -117,7 +123,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
     } else {
       day.details = (day.details || []).map(d => {
         if (d.id !== editingItemId) return d;
-        savedItem = { ...d, time, endTime, content, location: locationVal, url };
+        savedItem = { ...d, time, endTime, openTime, content, location: locationVal, url };
         return savedItem;
       });
       saveDay(day);
@@ -146,6 +152,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
           id: Date.now().toString() + '_e' + count,
           time,
           ...(endTime && { endTime }),
+          ...(openTime && { openTime }),
           content,
           ...(locationVal && { location: locationVal }),
           ...(url && { url }),
@@ -246,9 +253,27 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
                 />
               </div>
             </div>
+            <div className="detail-range-row">
+              <label className="detail-range-toggle">
+                <input
+                  type="checkbox"
+                  checked={editIsEvent}
+                  onChange={e => setEditIsEvent(e.target.checked)}
+                />
+                <span>イベント（開場時間を入れる）</span>
+              </label>
+            </div>
+            {editIsEvent && (
+              <div className="detail-time-row">
+                <div className="detail-time-field">
+                  <label className="detail-time-label">開場</label>
+                  <TimeField value={editOpenTime} onChange={setEditOpenTime} placeholder="時間を入力" />
+                </div>
+              </div>
+            )}
             <div className="detail-time-row">
               <div className="detail-time-field">
-                <label className="detail-time-label">開始</label>
+                <label className="detail-time-label">{editIsEvent ? '開演' : '開始'}</label>
                 <TimeField value={editTime} onChange={setEditTime} placeholder="時間を入力" />
               </div>
               <div className="detail-time-field">
@@ -333,7 +358,7 @@ export default function DetailPanel({ dateStr, day, onUpdate, onEditShift, onAdd
           <div key={item.id}>
             <div className="detail-item">
               <div className="detail-item-time" onClick={() => startEditDetail(item)}>
-                {item.time || '終日'}
+                {item.openTime ? (item.time ? `開場 ${item.openTime}／開演 ${item.time}` : `開場 ${item.openTime}`) : (item.time || '終日')}
                 {item.linkId && <span className="detail-link-badge">🔗</span>}
               </div>
               <div className="detail-item-content" onClick={() => startEditDetail(item)}>{item.content}</div>

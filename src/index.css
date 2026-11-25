@@ -1285,6 +1285,22 @@ body {
   gap: 6px;
 }
 
+.pending-event-time {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+}
+
+.pending-event-time > input {
+  flex: 1;
+  min-width: 0;
+}
+
 .pending-event-row-inline > input {
   flex: 1;
   min-width: 0;

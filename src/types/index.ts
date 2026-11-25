@@ -18,6 +18,7 @@ export interface DetailItem {
   id: string;
   time: string; // HH:MM（開始時間。空なら終日）
   endTime?: string; // HH:MM（終了時間。任意）
+  openTime?: string; // HH:MM（開場時間。イベントのみ・任意）
   content: string;
   location?: string; // 場所（任意）
   url?: string;
