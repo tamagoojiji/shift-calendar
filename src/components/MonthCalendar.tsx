@@ -339,34 +339,30 @@ export default function MonthCalendar() {
           <span className="cal-year">{year}年 ▾</span>
         </div>
         <div className="cal-header-right">
+          <button className="cal-today-btn" onClick={apply17}>17時</button>
           <button className="cal-today-btn" onClick={() => setShowRequest(true)}>勤務希望</button>
           <button className="cal-today-btn" onClick={goToday}>今日</button>
-          <button className="cal-nav-btn" onClick={prevMonth}>◀</button>
-          <button className="cal-nav-btn" onClick={nextMonth}>▶</button>
         </div>
       </div>
 
-      {/* 17時の一括入力（木・土・日） */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', padding: '4px 20px 8px' }}>
-        <span style={{ flex: 1, minWidth: 0, fontSize: '13px', lineHeight: 1.4, color: 'var(--on-surface-variant)' }}>
-          {!bulk17Dates
-            ? '木・土・日にまとめて入れる'
-            : bulk17Dates.length > 0
-              ? `${bulk17Dates.length}日に17時を入れました`
+      {/* 17時の一括入力（木・土・日）の結果。押した後だけ出す */}
+      {bulk17Dates && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', padding: '4px 20px 8px', minHeight: '44px' }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: '13px', lineHeight: 1.4, color: 'var(--on-surface-variant)' }}>
+            {bulk17Dates.length > 0
+              ? `木・土・日の${bulk17Dates.length}日に17時を入れました`
               : '新しく入れられる日はありませんでした'}
-        </span>
-        {bulk17Dates && bulk17Dates.length > 0 && (
-          <button
-            style={{ minHeight: '44px', padding: '0 12px', fontSize: '14px', background: 'none', border: '1px solid var(--on-surface-variant)', borderRadius: '999px', color: 'var(--on-surface)' }}
-            onClick={undo17}
-          >
-            元に戻す
-          </button>
-        )}
-        <button className="cal-today-btn" style={{ minHeight: '44px', padding: '0 20px', fontSize: '16px' }} onClick={apply17}>
-          17時
-        </button>
-      </div>
+          </span>
+          {bulk17Dates.length > 0 && (
+            <button
+              style={{ minHeight: '44px', padding: '0 12px', fontSize: '14px', background: 'none', border: '1px solid var(--on-surface-variant)', borderRadius: '999px', color: 'var(--on-surface)' }}
+              onClick={undo17}
+            >
+              元に戻す
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 勤務希望モーダル */}
       {showRequest && (
