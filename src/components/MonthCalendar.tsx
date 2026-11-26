@@ -80,7 +80,11 @@ export default function MonthCalendar() {
   );
 
   // 17時から入れる曜日（木・土・日）へ一括入力。休み・外し・夜勤開始が入力済みの日は触らない
-  const [bulk17, setBulk17] = useState<string[] | null>(null); // 直前の一括入力で入れた日（元に戻す用）
+  // 直前の一括入力で入れた日（元に戻す用）。月を送ったら表示しない
+  const [bulk17, setBulk17Raw] = useState<{ ym: string; dates: string[] } | null>(null);
+  const ymKey = `${year}-${month}`;
+  const bulk17Dates = bulk17 && bulk17.ym === ymKey ? bulk17.dates : null;
+  const setBulk17 = (dates: string[] | null) => setBulk17Raw(dates ? { ym: ymKey, dates } : null);
   const apply17 = () => {
     const applied: string[] = [];
     for (const { dateStr } of requestDays) {
@@ -96,7 +100,7 @@ export default function MonthCalendar() {
     refresh();
   };
   const undo17 = () => {
-    for (const dateStr of bulk17 ?? []) {
+    for (const dateStr of bulk17Dates ?? []) {
       const day = getDay(dateStr);
       if (day.nightTime === '17') {
         day.nightTime = null;
@@ -120,6 +124,7 @@ export default function MonthCalendar() {
     saveCurrentMonth(month === 1 ? year - 1 : year, month === 1 ? 12 : month - 1);
     setSelectedDate(null);
     setEditingDate(null);
+    setBulk17Raw(null);
   }, [year, month]);
 
   const nextMonth = useCallback(() => {
@@ -128,6 +133,7 @@ export default function MonthCalendar() {
     saveCurrentMonth(month === 12 ? year + 1 : year, month === 12 ? 1 : month + 1);
     setSelectedDate(null);
     setEditingDate(null);
+    setBulk17Raw(null);
   }, [year, month]);
 
   const swipeHandlers = useSwipe(nextMonth, prevMonth);
@@ -136,6 +142,7 @@ export default function MonthCalendar() {
     const d = new Date();
     setYear(d.getFullYear());
     setMonth(d.getMonth() + 1);
+    setBulk17Raw(null);
   };
 
   const openPicker = () => {
@@ -149,6 +156,7 @@ export default function MonthCalendar() {
     saveCurrentMonth(pickerYear, m);
     setSelectedDate(null);
     setEditingDate(null);
+    setBulk17Raw(null);
     setShowPicker(false);
   };
 
@@ -236,6 +244,7 @@ export default function MonthCalendar() {
       day.nightTime = value as NightShiftTime;
     }
     saveDay(day);
+    setBulk17Raw(null); // 手で直したら一括入力の結果表示は消す（件数が食い違うため）
     // 日勤・休みの変更は眼科カレンダーに自動同期
     if (field === 'dayShift' || field === 'isOff') {
       syncToClinic(dateStr, day);
@@ -330,11 +339,33 @@ export default function MonthCalendar() {
           <span className="cal-year">{year}年 ▾</span>
         </div>
         <div className="cal-header-right">
-          <button className="cal-today-btn" onClick={() => { setBulk17(null); setShowRequest(true); }}>勤務希望</button>
+          <button className="cal-today-btn" onClick={() => setShowRequest(true)}>勤務希望</button>
           <button className="cal-today-btn" onClick={goToday}>今日</button>
           <button className="cal-nav-btn" onClick={prevMonth}>◀</button>
           <button className="cal-nav-btn" onClick={nextMonth}>▶</button>
         </div>
+      </div>
+
+      {/* 17時の一括入力（木・土・日） */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', padding: '4px 20px 8px' }}>
+        <span style={{ flex: 1, minWidth: 0, fontSize: '13px', lineHeight: 1.4, color: 'var(--on-surface-variant)' }}>
+          {!bulk17Dates
+            ? '木・土・日にまとめて入れる'
+            : bulk17Dates.length > 0
+              ? `${bulk17Dates.length}日に17時を入れました`
+              : '新しく入れられる日はありませんでした'}
+        </span>
+        {bulk17Dates && bulk17Dates.length > 0 && (
+          <button
+            style={{ minHeight: '44px', padding: '0 12px', fontSize: '14px', background: 'none', border: '1px solid var(--on-surface-variant)', borderRadius: '999px', color: 'var(--on-surface)' }}
+            onClick={undo17}
+          >
+            元に戻す
+          </button>
+        )}
+        <button className="cal-today-btn" style={{ minHeight: '44px', padding: '0 20px', fontSize: '16px' }} onClick={apply17}>
+          17時
+        </button>
       </div>
 
       {/* 勤務希望モーダル */}
@@ -344,31 +375,6 @@ export default function MonthCalendar() {
             <div className="shift-editor-header">
               <span>{requestTitle} 勤務希望</span>
               <button onClick={() => { setShowRequest(false); setCopied(false); }}>✕</button>
-            </div>
-            <div style={{ padding: '16px 16px 0' }}>
-              <button
-                style={{ width: '100%', minHeight: '44px', fontSize: '16px', fontWeight: 600, background: '#333', color: '#fff', border: 'none', borderRadius: '8px' }}
-                onClick={apply17}
-              >
-                木・土・日に17時を入れる
-              </button>
-              {bulk17 === null ? (
-                <div style={{ marginTop: '8px', fontSize: '13px', lineHeight: '1.6', color: '#555' }}>
-                  休み・外しの日と、開始時間を入力済みの日は変えません。1日だけ外すときは、その日を長押し →「夜勤開始」の「なし」。
-                </div>
-              ) : (
-                <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '14px', color: '#333' }}>
-                  <span>{bulk17.length > 0 ? `${bulk17.length}日に17時を入れました` : '新しく入れられる日はありませんでした'}</span>
-                  {bulk17.length > 0 && (
-                    <button
-                      style={{ minHeight: '44px', padding: '0 12px', fontSize: '14px', background: 'none', border: '1px solid #999', borderRadius: '8px', color: '#333' }}
-                      onClick={undo17}
-                    >
-                      元に戻す
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
             <pre style={{ whiteSpace: 'pre-wrap', padding: '16px', fontSize: '14px', lineHeight: '1.8' }}>
               {generateRequest()}
